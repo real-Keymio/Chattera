@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Chattera 完整使用指南</title>
+<link rel="stylesheet" href="guide.css">
+</head>
+<body>
+<div class="cover">
+  <img src="../../src/static/mc/favicon.ico" alt="">
+  <div><h1>Chattera 完整使用指南<small>A group chat for you and your AIs.　把多个 AI 请进同一个对话</small></h1></div>
+</div>
+<p class="tag">适用于 Windows 便携版。第一次使用请先看《01_先看这个.pdf》。</p>
+
+<h2>1　Chattera 是什么</h2>
+<p>Chattera 是一个在你自己电脑上运行的<b>群聊</b>：你提问，几位 AI 模型各自回答；你可以只问其中一位，也可以让它们互相回应、
+比较彼此的观点。它是聊天工具，不是“自动办事”的软件：AI 只回答问题，不会在你的电脑上执行命令或改动文件。</p>
+<table>
+  <tr><th style="width:24%">术语</th><th>意思</th></tr>
+  <tr><td>参与者</td><td>聊天里的一位“发言者”，例如 Claude、Codex、Gemini、DeepSeek，或你自己添加的模型。</td></tr>
+  <tr><td>连接（服务商）</td><td>Chattera 联系某家 AI 公司的方式，通常是“服务地址 + API Key”。</td></tr>
+  <tr><td>模型</td><td>同一家服务商通常提供好几个模型（能力、速度、价格不同）。每位参与者使用其中一个。</td></tr>
+  <tr><td>API Key</td><td>服务商发给你的“通行密码”，用来证明是你在使用并据此计费。请像密码一样保管。</td></tr>
+</table>
+<div class="note money"><b>费用说明：</b>Chattera 免费、开源。<b>演示模式不产生任何费用。</b>使用真实模型时，你直接向模型服务商
+（或你选择的中转服务）付费，一般按“用了多少文字”计费，价格见各服务商官网。多位模型同时回答时，每一位都会单独计费。
+建议先在服务商处少量充值，并开启余额提醒。</div>
+
+<h2>2　安装、启动与退出</h2>
+<ol>
+  <li><b>解压：</b>右键 <code>Chattera-Windows-x64.zip</code> → <b class="ui">全部解压缩…</b>。放在“文档”或桌面都可以，也可以放在 U 盘里。</li>
+  <li><b>启动：</b>双击 <code>Chattera.exe</code>。第一次启动约十几秒；之后 Chattera 会在自己的窗口中打开
+  （电脑装有 Microsoft Edge 时使用 Edge 的应用窗口，否则用默认浏览器）。</li>
+  <li><b>通知区域图标：</b>Chattera 启动后，屏幕右下角会出现它的图标（可能藏在“^”里）。点左键重新打开窗口；点右键有：
+  打开 Chattera、重新启动、使用指南、打开数据文件夹、打开日志文件夹、<b>在桌面创建快捷方式</b>、<b>退出 Chattera</b>。</li>
+  <li><b>退出：</b>关闭窗口不会退出。请用通知区域图标的 <b class="ui">退出 Chattera</b>，或 Chattera 里 <b class="ui">帮助 → 退出 Chattera</b>。</li>
+  <li><b>升级：</b>先退出，再用新版本的文件夹替换旧的程序文件夹。你的聊天和设置不在程序文件夹里，不会丢失。</li>
+</ol>
+<div class="note warn">若出现“Windows 已保护你的电脑”：程序没有购买数字签名才会这样。只在确认是从官方发布页下载时，点 <b class="ui">更多信息</b> → <b class="ui">仍要运行</b>。</div>
+
+<h2 class="pb">3　配置你的第一个真实模型</h2>
+<h3>3.1　准备 API Key</h3>
+<ol>
+  <li>选一家服务商并注册账号，例如 DeepSeek（<code>platform.deepseek.com</code>）、OpenAI、Anthropic、Google Gemini、通义千问、Kimi、智谱 GLM 等。</li>
+  <li>在服务商网站<b>充值</b>（大多数服务商需要余额才能调用）。</li>
+  <li>找到 “API Keys” 页面，<b>创建</b>一个新的 Key 并<b>复制</b>。很多网站只显示一次，复制好再关闭页面。</li>
+</ol>
+<h3>3.2　在 Chattera 里添加</h3>
+<div class="cols">
+  <div>
+    <ol>
+      <li>点左下角 <b class="ui">设置</b>，左侧选 <b class="ui">模型与服务</b>，点上方 <b class="ui">＋ 添加模型</b>。</li>
+      <li><b>选择服务商：</b>点你注册的那一家。列表里没有的，选 <b class="ui">其他服务</b> 并填写服务商提供的地址。</li>
+      <li><b>连接：</b>把 API Key 粘贴到 <b class="ui">API Key</b> 一栏，点 <b class="ui">连接并获取模型</b>。
+      如果提示“服务商拒绝了这个密钥”，请检查 Key 是否复制完整、账户是否有余额。</li>
+      <li><b>选择模型：</b>勾选要用的模型，保持 <b class="ui">加入聊天</b> 打开（可以改它在聊天里显示的名字），点 <b class="ui">完成</b>。</li>
+    </ol>
+  </div>
+  <figure><img src="img/06-add-provider.jpg" alt="选择服务商"><figcaption>第 1 步：选择服务商</figcaption></figure>
+</div>
+<figure class="half"><img src="img/07-add-deepseek.jpg" alt="填写 API Key"><figcaption>第 2 步：粘贴 API Key。Key 只保存在本机，页面不会再显示它，也不会写进聊天记录和日志。</figcaption></figure>
+<h3>3.3　检查与修改</h3>
+<p>在 <b class="ui">设置 → 模型与服务</b> 的左侧列表里点一位参与者，可以更换它使用的连接和模型、调整推理强度，点
+<b class="ui">测试这个模型</b> 会发一条极短的消息确认能用（会产生极少量费用）。</p>
+<figure><img src="img/05-settings-models.jpg" alt="模型与服务"><figcaption>设置 → 模型与服务：左边是参与者和连接，右边是所选参与者使用的模型。</figcaption></figure>
+
+<h2>4　多模型群聊</h2>
+<figure><img src="img/03-composer.jpg" alt="输入区"><figcaption>输入区：下方的名字是本次的回答者；右侧依次是 联网、视角、公开、讨论 和本次模型设置。</figcaption></figure>
+<ul>
+  <li><b>选择谁来回答：</b>点输入框下方的名字来选中或取消；旁边的 <b class="ui">⌄</b> 可以搜索、固定常用参与者或添加新模型。</li>
+  <li><b>点名：</b>只选一位，就只有它回答。</li>
+  <li><b>让别人接着说：</b>每条回答上方有 <b class="ui">请回应</b>，可以请另一位模型回应这条回答。</li>
+  <li><b>引用追问：</b>在回答里选中一段文字，点出现的 <b class="ui">引用</b>，再输入你的追问。</li>
+  <li><b>私聊：</b>点 <b class="ui">公开</b> 改为 <b class="ui">仅回答者可见</b> 或指定可见的模型。其他模型读不到这条消息和它的回答。</li>
+  <li><b>独立回答：</b>点 <b class="ui">讨论</b> 改为 <b class="ui">独立回答</b>：各模型互相看不到对方的答案，你确认后才公开，适合比较不同观点。</li>
+  <li><b>本次换个模型：</b>点最右侧的齿轮，只对这一次发送生效。</li>
+  <li><b>每轮工具：</b>一轮有多个回答时，上方有 <b class="ui">复制本轮</b>（复制为 Markdown）、<b class="ui">放到画布</b>、<b class="ui">并排对照</b>、<b class="ui">全部折叠</b>。</li>
+</ul>
+<div class="note">每条回答下方会写明它实际用的连接和模型。回答出错时会直接说明原因（例如余额不足、服务暂时不可用），不会假装成功。</div>
+
+<h2>5　联网检索</h2>
+<div class="cols">
+  <div>
+    <p>点输入区的 <b class="ui">联网</b>，默认是 <b>独立检索</b>：每个模型用它所在服务商的官方搜索（没有的话由 Chattera 代为检索），
+    自己决定搜什么、读什么。另外两种：</p>
+    <ul>
+      <li><b>共享检索：</b>系统先检索一次，把同一份资料交给所有回答者，适合对同一批材料做比较。</li>
+      <li><b>混合检索：</b>先给大家一份共同的基础资料，再让每个模型自己补充搜索。</li>
+    </ul>
+    <p>每条回答下方都能展开看到它<b>实际</b>搜了什么、读了哪些网页；没有真正检索到的来源不会被当作引用。</p>
+    <div class="note">私聊内容不会发给搜索服务：私聊时不能用独立检索，共享检索需要你自己填写检索词。联网时，检索词会发送给相应的搜索服务。</div>
+  </div>
+  <figure><img src="img/04-web-menu.jpg" alt="联网菜单"><figcaption>联网方式菜单</figcaption></figure>
+</div>
+
+<h2 class="pb">6　多栏阅读与自由画布</h2>
+<p>点顶部右侧的布局按钮，可以选择 1–6 栏（4 栏为 2+2，5 栏为 3+2，6 栏为 3+3），也可以按 <b class="ui">Ctrl + 1…6</b>。
+每一栏可以单独滚动、只看某一位参与者、放大或固定位置。</p>
+<div class="cols">
+  <figure><img src="img/11-layout-menu.jpg" alt="布局选择"><figcaption>布局选择</figcaption></figure>
+  <figure><img src="img/12-two-columns.jpg" alt="两栏阅读"><figcaption>两栏对照阅读</figcaption></figure>
+</div>
+<p>选择 <b class="ui">自由画布</b> 后，聊天停靠在左侧，右侧是一块可以拖动、缩放的画布：</p>
+<ul>
+  <li>按住一条消息的<b>标题行</b>拖到画布，得到这条消息的窗口；按住一轮讨论的<b>摘要行</b>拖过去，得到整轮讨论窗口；</li>
+  <li><b>先选中一段文字，再按住选中的文字拖到画布</b>，得到一张引用卡片，它会连线到原消息；</li>
+  <li>窗口可以移动、调整大小、折叠、固定；滚轮在窗口内滚动内容，在空白处平移画布；按住空格可拖动画布；画布下方有缩放、全览、整理。</li>
+</ul>
+<figure><img src="img/13-canvas.jpg" alt="自由画布"><figcaption>自由画布：左侧聊天，右侧是拖出来的消息窗口。画布布局按聊天保存在你的数据文件夹里。</figcaption></figure>
+
+<h2 class="pb">7　Research Library（资料库）</h2>
+<div class="cols">
+  <div>
+    <p>点右上角的房间面板按钮，选 <b class="ui">资料</b>。这里列出这个聊天里模型<b>实际用到</b>的论文和网页：读过的、引用过的、明确保存的。
+    你也可以手动添加 DOI 或网址。</p>
+    <ul>
+      <li>资料有“谁找到的、谁能看”的记录；可以把资料分享给其他参与者，或只留给某一位；</li>
+      <li>可以写笔记（默认只有写下它的一方能看到，分享资料时可选择是否一并分享笔记）；</li>
+      <li>全文只有在需要阅读时才下载；同一个文件只保存一份；</li>
+      <li>拖到画布可以并排阅读。</li>
+    </ul>
+    <p>面板里的 <b class="ui">模型</b> 页可以单独设置这个聊天里每位参与者用哪个模型。</p>
+  </div>
+  <figure><img src="img/14-library.jpg" alt="资料库"><figcaption>房间面板 → 资料</figcaption></figure>
+</div>
+
+<h2>8　数据保存在哪里</h2>
+<p>你的聊天、设置、API Key、资料库和日志都只保存在<b>这台电脑</b>上，默认位置是 <span class="path">%LOCALAPPDATA%\Chattera</span>
+（把这串字符粘贴到文件资源管理器的地址栏，按回车即可打开）。也可以在通知区域图标的右键菜单里点 <b class="ui">打开数据文件夹</b>。</p>
+<figure><img src="img/08-settings-data.jpg" alt="数据位置"><figcaption>设置 → 数据：显示数据保存位置。</figcaption></figure>
+<ul>
+  <li><b>备份：</b>先退出 Chattera，再把整个 <code>Chattera</code> 数据文件夹复制到别处。</li>
+  <li><b>换电脑：</b>在新电脑上解压程序，退出状态下把备份的数据文件夹放回 <span class="path">%LOCALAPPDATA%\Chattera</span>。</li>
+  <li><b>便携模式（U 盘）：</b>在 <code>Chattera.exe</code> 旁边新建一个名为 <code>portable.txt</code> 的空文件，之后数据都保存在程序旁边的 <code>data</code> 文件夹里。</li>
+  <li><b>删除聊天：</b>目前不能删除，只能在左侧列表里把聊天<b>归档</b>（随时可以恢复）。</li>
+  <li><b>导出：</b>设置 → 数据 → 导出聊天历史（ZIP，含私聊内容，请妥善保管）。</li>
+</ul>
+<div class="note warn"><b>安全：</b>Chattera 只在本机运行（地址 127.0.0.1），没有为多人访问设计登录保护。不要把它开放到局域网或互联网。</div>
+
+<h2 class="pb">9　常见问题</h2>
+<table>
+  <tr><th style="width:32%">现象</th><th>怎么办</th></tr>
+  <tr><td>双击后启动窗口显示错误</td><td>点 <b class="ui">打开日志</b>，查看 <code>server.log</code> 最后几行；或点 <b class="ui">重试</b>。确认压缩包已完整解压（不要在压缩包里直接运行）。</td></tr>
+  <tr><td>窗口关了，再次双击没反应</td><td>Chattera 仍在后台运行，双击会重新打开窗口；也可点通知区域图标。</td></tr>
+  <tr><td>“服务商拒绝了这个密钥”</td><td>Key 复制不完整、已删除或账户余额为零。到服务商网站检查后，在 设置 → 模型与服务 → 该连接 中重新填写。</td></tr>
+  <tr><td>回答一直不出现 / 超时</td><td>可能是网络或服务商繁忙。点回答旁的停止后重试；在 设置 → 诊断 查看各连接的最近失败原因。</td></tr>
+  <tr><td>某位参与者是灰色的</td><td>它还没有可用的连接。在 设置 → 模型与服务 中为它选择连接和模型，或在输入区不选它。</td></tr>
+  <tr><td>提示端口被占用</td><td>Chattera 会自动换一个空闲端口，一般无需处理。</td></tr>
+  <tr><td>扫描版 PDF 读不出文字</td><td>便携版已内置文字识别（OCR），扫描件在本机自动识别，不会上传到别处。附件预览里这些页面标着“OCR 识别”，可能有错字，公式和表格尤其不可靠，关键内容请对照页面图片。每份文件最多识别 40 页，时间不够时会列出没识别的页。</td></tr>
+  <tr><td>界面上的 Claude Code / Codex 是什么</td><td>它们是可选的“本机订阅 CLI”连接，面向开发者，默认关闭。普通用户使用 API 连接即可，不需要它们。</td></tr>
+  <tr><td>想彻底卸载</td><td>退出后删除程序文件夹；如不再需要聊天记录，再删除 <span class="path">%LOCALAPPDATA%\Chattera</span>。</td></tr>
+</table>
+
+<h2>10　帮助与关于</h2>
+<div class="cols">
+  <div>
+    <p>左下角的 <b class="ui">帮助</b> 里可以打开这两份指南、重新打开欢迎页、查看版本和数据位置，以及退出 Chattera。</p>
+    <p>Chattera 使用 MIT 许可，基于开源项目 agentchattr。程序文件夹中的 <code>THIRD_PARTY_NOTICES.txt</code> 和
+    <code>licenses</code> 文件夹列出了它包含的第三方组件及其许可。</p>
+    <p class="foot">本指南的截图来自 Chattera Windows 便携版的演示模式，未包含任何真实 API Key 或私人聊天内容。</p>
+  </div>
+  <figure><img src="img/09-settings-help.jpg" alt="帮助"><figcaption>设置 → 帮助</figcaption></figure>
+</div>
+</body>
+</html>

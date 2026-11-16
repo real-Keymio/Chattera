@@ -1,0 +1,41 @@
+[
+  {
+    "id": "continue",
+    "label": "让原 AI 继续",
+    "target": "author",
+    "instruction": "接着分析 {author} 的回答，展开一个尚未解决的问题。",
+    "primary": true
+  },
+  {
+    "id": "respond",
+    "label": "让其他 AI 回应",
+    "target": "choose",
+    "instruction": "回应 {author} 的论点，给出有依据的补充或反驳。",
+    "primary": true
+  },
+  {
+    "id": "weakness",
+    "label": "指出最大漏洞",
+    "target": "author",
+    "instruction": "指出这条论证最重要的漏洞，解释它影响了什么。"
+  },
+  {
+    "id": "counterexample",
+    "label": "寻找反例",
+    "target": "author",
+    "instruction": "构造一个能削弱这个观点的反例，并说明适用条件。"
+  },
+  {
+    "id": "question",
+    "label": "提出新问题",
+    "target": "author",
+    "instruction": "从这条回答提出一个可继续探索的研究问题。"
+  },
+  {
+    "id": "sources",
+    "label": "核查来源",
+    "target": "choose",
+    "instruction": "核查这条回答里的关键事实和引用：用检索工具查证，并区分哪些只查到文献信息、哪些读了摘要、哪些读了全文。",
+    "research": true
+  }
+]

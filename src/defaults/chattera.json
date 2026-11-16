@@ -1,0 +1,12 @@
+{
+  "_comment": "Chattera chat settings. Created on first start; connections and models are normally managed in Settings, which keeps its own changes in data/model_registry.json. API keys never go in this file.",
+  "input_budget_bytes": 72000,
+  "default_owners": {},
+  "backends": {},
+  "cli_defaults": {
+    "claude": {"effort": "medium", "timeout": 180},
+    "codex": {"effort": "medium", "timeout": 180}
+  },
+  "cli_search_paths": [],
+  "automatic_memory": {"enabled": false}
+}

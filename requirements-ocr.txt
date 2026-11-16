@@ -1,0 +1,4 @@
+# Text recognition (OCR) for scanned PDFs and pictures of text. Large (~240 MB with its models).
+# Optional when running from source; always included in the Windows portable package.
+# Without it Chattera still reads PDFs that contain text and says when a page would need OCR.
+rapidocr-onnxruntime>=1.2

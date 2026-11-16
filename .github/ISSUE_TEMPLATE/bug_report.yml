@@ -1,0 +1,41 @@
+name: 问题报告 / Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **请不要粘贴 API Key、聊天内容、私人文件或完整日志。** 需要日志时只贴相关的几行，并删掉其中的路径和用户名。
+        **Do not paste API keys, chat content, private files or full logs.** Quote only the relevant lines.
+  - type: input
+    id: version
+    attributes:
+      label: Chattera 版本 / Version
+      description: 设置 → 帮助 → 关于 / Settings → Help → About
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: 安装方式 / How it was installed
+      options: ["Windows 便携版 / portable package", "源码 / from source"]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么 / What happened
+      description: 包括你期望看到什么 / Include what you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+  - type: textarea
+    id: log
+    attributes:
+      label: 相关日志（可选，已去除隐私）/ Relevant log lines (optional, redacted)
+      description: logs\server.log in the data folder
+      render: text

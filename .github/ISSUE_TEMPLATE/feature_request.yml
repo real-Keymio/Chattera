@@ -1,0 +1,19 @@
+name: 功能建议 / Feature request
+description: An idea for Chattera
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Chattera 是一个“你和多个 AI 的群聊”，不是自动执行任务的 Agent 平台。
+        Chattera is a group chat with AI models, not an agent platform that runs tasks.
+  - type: textarea
+    id: need
+    attributes:
+      label: 你想做到什么 / What do you want to do
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你设想的做法（可选）/ How you imagine it (optional)

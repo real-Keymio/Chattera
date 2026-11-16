@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>先看这个 — Chattera 快速上手</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  html { font-size: 10pt; line-height: 1.55; }
+  .step { margin: 2mm 0; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+  figure { margin: 1.5mm 0 0; }
+  h3 { font-size: 11pt; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <img src="../../src/static/mc/favicon.ico" alt="">
+  <div><h1>先看这个：5 分钟用上 Chattera<small>Chattera — A group chat for you and your AIs.　你和多个 AI 的群聊</small></h1></div>
+</div>
+
+<div class="note money"><b>关于费用：</b>Chattera 本身<b>免费</b>。“演示模式”不连接任何 AI，<b>不花钱</b>。
+以后接入真实的 AI 时，费用由你选择的 AI 服务商（例如 DeepSeek、OpenAI）按使用量直接向你收取，与 Chattera 无关。</div>
+
+<div class="step"><div class="num">1</div><div>
+  <h3>解压</h3>
+  <p>在下载好的 <code>Chattera-Windows-x64.zip</code> 上点右键 → <b class="ui">全部解压缩…</b> → <b class="ui">解压</b>
+  （不要在压缩包里直接双击运行）。打开解压出来的文件夹，你会看到：</p>
+  <div class="files">Chattera.exe                  ← 双击它启动
+01_先看这个.pdf                ← 就是这份说明
+02_Chattera完整使用指南.pdf    ← 全部功能与常见问题
+runtime   licenses   README.txt   LICENSE.txt   THIRD_PARTY_NOTICES.txt   VERSION</div>
+</div></div>
+
+<div class="row">
+  <div class="step"><div class="num">2</div><div>
+    <h3>双击 <code>Chattera.exe</code></h3>
+    <p>先出现一个小的启动窗口，第一次大约十几秒，之后自动打开 Chattera 的窗口。</p>
+    <figure><img src="img/splash.jpg" alt="启动窗口"><figcaption>启动窗口</figcaption></figure>
+    <div class="note warn">若提示“Windows 已保护你的电脑”：程序没有购买数字签名。只有确认是从 Chattera 官方发布页下载的，才点
+    <b class="ui">更多信息</b> → <b class="ui">仍要运行</b>。</div>
+  </div></div>
+  <div class="step"><div class="num">3</div><div>
+    <h3>在欢迎页点“进入演示”</h3>
+    <p>第一次打开会看到欢迎页。先点左边的 <b class="ui">进入演示</b>：不需要账号或 Key，也不花钱。</p>
+    <figure><img src="img/01-welcome-crop.jpg" alt="欢迎页"><figcaption>欢迎页</figcaption></figure>
+  </div></div>
+</div>
+
+<div class="row">
+  <div class="step"><div class="num">4</div><div>
+    <h3>说一句话试试</h3>
+    <p>在窗口下方的输入框里输入问题，按 <b class="ui">Enter</b> 发送。几位 AI 会各自回答
+    （演示里的回答是预先写好的示例，会标明“演示回复”）。</p>
+    <figure><img src="img/02-demo-chat.jpg" alt="演示聊天"><figcaption>演示聊天：四位参与者各自回答</figcaption></figure>
+  </div></div>
+  <div class="step"><div class="num">5</div><div>
+    <h3>换成真的 AI（需要 API Key）</h3>
+    <p><b>API Key</b> 是 AI 服务商发给你的“通行密码”。在服务商网站注册、充值，在“API Keys”页面创建一个并复制
+    （例如 DeepSeek 开放平台 <code>platform.deepseek.com</code>）。然后：</p>
+    <ol>
+      <li>点左下角 <b class="ui">设置</b> → <b class="ui">模型与服务</b> → <b class="ui">＋ 添加模型</b>；</li>
+      <li>选服务商（如 <b class="ui">DeepSeek</b>），把 Key 粘贴到 <b class="ui">API Key</b>，点 <b class="ui">连接并获取模型</b>；</li>
+      <li>勾选一个模型，保持 <b class="ui">加入聊天</b> 打开，点 <b class="ui">完成</b>，再点 <b class="ui">新聊天</b> 提问。</li>
+    </ol>
+    <figure><img src="img/07-add-deepseek-crop.jpg" alt="填写 API Key"><figcaption>Key 只保存在你的电脑上，页面不会再显示它</figcaption></figure>
+  </div></div>
+</div>
+
+<div class="step"><div class="num">6</div><div>
+  <h3>退出</h3>
+  <p>关掉窗口<b>不会</b>退出。要完全退出：在屏幕右下角通知区域的 Chattera 图标上点右键 → <b class="ui">退出 Chattera</b>，
+  或在 Chattera 里点 <b class="ui">帮助</b> → <b class="ui">退出 Chattera</b>。下次再双击 <code>Chattera.exe</code> 即可。</p>
+</div></div>
+
+<p class="foot">多栏阅读、自由画布、联网检索、资料库、数据备份和常见问题，见《02_Chattera完整使用指南.pdf》，也可以在 Chattera 左下角的“帮助”里打开。</p>
+</body>
+</html>

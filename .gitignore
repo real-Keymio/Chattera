@@ -1,0 +1,39 @@
+# Python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.venv-*/
+*.egg-info/
+build/
+dist/
+
+# User data never belongs in the repository (default location is %LOCALAPPDATA%\Chattera)
+data/
+uploads/
+logs/
+*.log
+*.jsonl
+model_registry.json
+chat_calls/
+library/
+
+# Secrets
+.env
+*.key
+.multichat-private/
+keys/
+config.local.toml
+
+# Editors / OS
+.vscode/
+.idea/
+.claude/
+.gemini/
+.DS_Store
+Thumbs.db
+
+# Build outputs of the launcher
+launcher/*.exe
+/Chattera.exe
+node_modules/

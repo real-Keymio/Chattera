@@ -3,6 +3,7 @@
 // allow-list of elements, attributes and URL schemes. Math and highlighted code are produced by the
 // vendored KaTeX / highlight.js from plain text, after sanitising.
 import { h, icon, ICONS, toast } from './util.js';
+import { t } from './i18n.js';
 
 const TAGS = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'DEL', 'S', 'CODE', 'PRE', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'A',
     'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'INPUT', 'SPAN', 'DIV', 'SUP', 'SUB']);
@@ -98,7 +99,7 @@ export function renderMarkdown(text) {
         } else block.textContent = raw;
         pre.replaceWith(h('div', { class: 'code-block' },
             h('div', { class: 'code-bar' }, h('span', null, lang || 'text'),
-                h('button', { class: 'code-copy', type: 'button', onclick: () => copyText(raw) }, icon(ICONS.copy, 13), '复制')),
+                h('button', { class: 'code-copy', type: 'button', onclick: () => copyText(raw) }, icon(ICONS.copy, 13), t('复制'))),
             h('pre', null, block)));
     }
     for (const table of host.querySelectorAll('table')) {
@@ -109,6 +110,6 @@ export function renderMarkdown(text) {
 }
 
 export async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); toast('已复制'); }
-    catch (e) { toast('复制失败，请手动选择文本复制。', 'error'); }
+    try { await navigator.clipboard.writeText(text); toast(t('已复制')); }
+    catch (e) { toast(t('复制失败，请手动选择文本复制。'), 'error'); }
 }

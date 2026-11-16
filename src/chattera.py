@@ -17,6 +17,7 @@ import socket
 import sys
 import time
 from pathlib import Path
+from chattera_i18n import _
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
@@ -61,7 +62,7 @@ def pick_port(preferred, taken=(), span=60):
     for port in range(preferred, preferred + span):
         if port not in taken and free(port):
             return port
-    raise SystemExit(f'没有可用的本机端口（{preferred}–{preferred + span - 1} 都被占用）。请在 config\\settings.json 里换一个 "port"。')
+    raise SystemExit(_('没有可用的本机端口（{0}–{1} 都被占用）。请在 config\\settings.json 里换一个 "port"。', preferred, preferred + span - 1))
 
 
 def first_config(home):
@@ -147,6 +148,8 @@ def main(argv=None):
         return
     log = setup_logging(home)
     settings = home.settings()
+    import chattera_i18n
+    chattera_i18n.configure(settings.get('language', 'auto'))
 
     cfg = first_config(home)
     cfg.setdefault('backends', {})

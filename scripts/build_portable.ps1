@@ -1,7 +1,7 @@
 # Builds the Windows x64 portable package:  <out>\Chattera-Windows-x64.zip
 #   powershell -ExecutionPolicy Bypass -File scripts\build_portable.ps1 [-Out D:\builds] [-Guides D:\guides]
 # Needs: .venv created by scripts\setup.ps1 (it installs PyInstaller from requirements-dev.txt).
-# -Guides: folder holding the two user-guide PDFs (01_..., 02_...; default: docs\user-guide\dist).
+# -Guides: folder holding the user-guide PDFs (01_..., 02_..., 01_Start_Here.pdf; default: docs\user-guide\dist).
 # Keep this file ASCII: Windows PowerShell 5.1 reads BOM-less files as ANSI.
 param([string]$Out = '', [string]$Guides = '')
 $ErrorActionPreference = 'Stop'
@@ -36,7 +36,7 @@ Copy-Item -LiteralPath (Join-Path $Root 'docs\portable\README.txt') -Destination
 Write-Host '[4/5] User guides...'
 $found = 0
 foreach ($pdf in Get-ChildItem -LiteralPath $Guides -Filter '*.pdf' -ErrorAction SilentlyContinue) { Copy-Item -LiteralPath $pdf.FullName -Destination $stage; $found++ }
-if ($found -lt 2) { Write-Warning "Expected two guide PDFs in $Guides, found $found." }
+if ($found -lt 3) { Write-Warning "Expected three guide PDFs in $Guides, found $found." }
 
 Write-Host '[5/5] Zip...'
 $zip = Join-Path $Out 'Chattera-Windows-x64.zip'

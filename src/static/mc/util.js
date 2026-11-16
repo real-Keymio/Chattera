@@ -1,4 +1,5 @@
 // Small DOM/network helpers shared by every Chattera UI module.
+import { t } from './i18n.js';
 export const TOKEN = window.__SESSION_TOKEN__ || '';
 
 /** h('div', {class:'x', onclick: fn}, child, 'text') — never parses HTML. */
@@ -68,57 +69,57 @@ export async function api(path, body, method) {
     });
     let value = null;
     try { value = await response.json(); } catch (e) { /* non-JSON error body */ }
-    if (!response.ok) throw new Error(explain(value?.error) || `请求失败（${response.status}）`);
+    if (!response.ok) throw new Error(explain(value?.error) || t('请求失败（{0}）', response.status));
     return value;
 }
 
 // Server validation messages are English and terse; give the user a next step.
 const EXPLAIN = [
-    [/Every reply target must be in the audience/, '回答者必须包含在可见范围内。请调整“谁可以看到”或回答者。'],
-    [/private reference requires the same or narrower audience/, '引用的是私聊内容，只能发给相同或更小的受众。请改用私聊范围，或先对原消息使用“公开分享”。'],
-    [/Independent answers require at least two models/, '独立回答至少需要选择两个模型。'],
-    [/Private\/independent discussion requires configured fresh-call backends/, '私聊与独立回答需要所选模型使用新版后端（非旧版 CLI 包装）。请在房间设置 → 参与者中检查。'],
-    [/Selected backend unavailable|Backend is not configured|API backend disabled/, '所选模型的后端当前不可用。请在房间设置 → 参与者中检查后端与密钥配置。'],
-    [/does not support image input/, '所选模型的当前后端不支持图片输入。请移除图片或改选支持图片的模型。'],
-    [/cannot consume (R9 )?attachments/, '所选模型的当前后端无法读取附件。请改选其他模型或后端。'],
-    [/Referenced message unavailable/, '引用的消息不可用（可能不在本聊天中）。'],
-    [/already replying in this room/, '该模型正在本聊天中回复，请等待完成或先停止。'],
-    [/Select (stable model identities|reply targets|a valid message audience)/, '回答者或可见范围无效，请重新选择。'],
-    [/Overrides must name explicit reply targets/, '“本次模型设置”只能用于本次选择的回答者。'],
-    [/Restore this room before changing messages/, '该聊天已归档，请先恢复再操作消息。'],
-    [/Only human messages can be edited/, '只有你自己的消息可以编辑。'],
-    [/This version was replaced/, '该版本已被替换，请刷新后再编辑。'],
-    [/Regeneration requires a recorded fresh-call reply/, '这条回复没有可用的调用记录，无法重新生成。请重新提问。'],
-    [/no frozen audience snapshot|no attribution; send a new question/, '这条旧回复缺少冻结快照，无法精确重新生成。请重新提问。'],
-    [/Wait for or cancel the remaining independent answers/, '同组独立回答尚未全部完成。请等待或停止其余回答后再公开。'],
-    [/Summary sources have been superseded/, '摘要引用的来源消息已被编辑或替换，请更新覆盖范围。'],
-    [/History is preserved; archive this room instead/, '历史记录只追加、不清空。如需隐藏，请归档该聊天。'],
-    [/exceed(s)? .*budget|exceeds configured budget/, '输入超出该模型的上下文容量。请缩短内容、减少附件，或在房间设置 → 上下文中调整。'],
-    [/Stop and disconnect the legacy wrapper/, '请先停止并断开旧版 CLI 包装进程，再切换后端。'],
-    [/Unsupported backend|belongs to a different stable identity/, '这个连接不能用于该参与者。'],
-    [/Unknown participant|participant has been removed/, '这位参与者已被移除或不存在。'],
-    [/Connection is switched off or has no key/, '这位参与者使用的连接已停用或还没有密钥。请在 设置 → 模型与服务 里检查。'],
-    [/Effort not in explicitly configured model capabilities/, '所选推理强度不在这个模型支持的档位里，请重新选择。'],
-    [/Unsupported OpenAI reasoning mapping|OpenAI effort mapping must be explicitly configured/, '这个连接没有开启“推理强度参数”，不能设置推理强度。可在连接的高级设置里开启（需服务商支持 reasoning_effort）。'],
-    [/response did not match protocol|response schema/, '服务商返回的内容不是所选协议的格式。请检查连接的协议与服务地址是否对应。'],
-    [/API HTTP status 401|API HTTP status 403/, '服务商拒绝了密钥（401/403）。请检查密钥是否正确、是否有该模型的权限。'],
-    [/API HTTP status 404/, '服务商返回 404：服务地址或模型 ID 不对。'],
-    [/API HTTP status 429/, '服务商返回 429：请求过于频繁或额度不足。'],
-    [/API HTTP status 5\d\d/, '服务商暂时出错（5xx），稍后再试。'],
-    [/connect timeout|transport failure|connect \(DNS/, '连不上服务地址。请检查地址、网络或代理。'],
-    [/response timeout/, '服务商在限定时间内没有答复。'],
-    [/API backend disabled or key unavailable/, '这个连接已停用，或还没有保存密钥。'],
-    [/API cumulative request cap reached/, '这个连接已达到你设置的累计请求上限。可在连接的高级设置里调高或取消上限。'],
-    [/Retrieved evidence does not fit/, '检索到的资料放不进这个模型的输入容量。可在房间设置 → 上下文调大容量，或关闭检索后重试。'],
-    [/Unknown research lens/, '所选研究视角不存在，可能已被删除。请重新选择。'],
-    [/Invalid API key format/, 'Key 格式不正确：至少 8 个字符，且不能包含空白。'],
-    [/Explicit provider model ID required/, '需要填写模型 ID。'],
-    [/API requires HTTPS|base URL must not contain/, '服务地址需为 https:// 开头，且不含账号、查询参数。'],
-    [/Still used by/, '仍有聊天在使用这个连接，请先把那些聊天切换到其他连接。'],
+    [/Every reply target must be in the audience/, t('回答者必须包含在可见范围内。请调整“谁可以看到”或回答者。')],
+    [/private reference requires the same or narrower audience/, t('引用的是私聊内容，只能发给相同或更小的受众。请改用私聊范围，或先对原消息使用“公开分享”。')],
+    [/Independent answers require at least two models/, t('独立回答至少需要选择两个模型。')],
+    [/Private\/independent discussion requires configured fresh-call backends/, t('私聊与独立回答需要所选模型使用新版后端（非旧版 CLI 包装）。请在房间设置 → 参与者中检查。')],
+    [/Selected backend unavailable|Backend is not configured|API backend disabled/, t('所选模型的后端当前不可用。请在房间设置 → 参与者中检查后端与密钥配置。')],
+    [/does not support image input/, t('所选模型的当前后端不支持图片输入。请移除图片或改选支持图片的模型。')],
+    [/cannot consume (R9 )?attachments/, t('所选模型的当前后端无法读取附件。请改选其他模型或后端。')],
+    [/Referenced message unavailable/, t('引用的消息不可用（可能不在本聊天中）。')],
+    [/already replying in this room/, t('该模型正在本聊天中回复，请等待完成或先停止。')],
+    [/Select (stable model identities|reply targets|a valid message audience)/, t('回答者或可见范围无效，请重新选择。')],
+    [/Overrides must name explicit reply targets/, t('“本次模型设置”只能用于本次选择的回答者。')],
+    [/Restore this room before changing messages/, t('该聊天已归档，请先恢复再操作消息。')],
+    [/Only human messages can be edited/, t('只有你自己的消息可以编辑。')],
+    [/This version was replaced/, t('该版本已被替换，请刷新后再编辑。')],
+    [/Regeneration requires a recorded fresh-call reply/, t('这条回复没有可用的调用记录，无法重新生成。请重新提问。')],
+    [/no frozen audience snapshot|no attribution; send a new question/, t('这条旧回复缺少冻结快照，无法精确重新生成。请重新提问。')],
+    [/Wait for or cancel the remaining independent answers/, t('同组独立回答尚未全部完成。请等待或停止其余回答后再公开。')],
+    [/Summary sources have been superseded/, t('摘要引用的来源消息已被编辑或替换，请更新覆盖范围。')],
+    [/History is preserved; archive this room instead/, t('历史记录只追加、不清空。如需隐藏，请归档该聊天。')],
+    [/exceed(s)? .*budget|exceeds configured budget/, t('输入超出该模型的上下文容量。请缩短内容、减少附件，或在房间设置 → 上下文中调整。')],
+    [/Stop and disconnect the legacy wrapper/, t('请先停止并断开旧版 CLI 包装进程，再切换后端。')],
+    [/Unsupported backend|belongs to a different stable identity/, t('这个连接不能用于该参与者。')],
+    [/Unknown participant|participant has been removed/, t('这位参与者已被移除或不存在。')],
+    [/Connection is switched off or has no key/, t('这位参与者使用的连接已停用或还没有密钥。请在 设置 → 模型与服务 里检查。')],
+    [/Effort not in explicitly configured model capabilities/, t('所选推理强度不在这个模型支持的档位里，请重新选择。')],
+    [/Unsupported OpenAI reasoning mapping|OpenAI effort mapping must be explicitly configured/, t('这个连接没有开启“推理强度参数”，不能设置推理强度。可在连接的高级设置里开启（需服务商支持 reasoning_effort）。')],
+    [/response did not match protocol|response schema/, t('服务商返回的内容不是所选协议的格式。请检查连接的协议与服务地址是否对应。')],
+    [/API HTTP status 401|API HTTP status 403/, t('服务商拒绝了密钥（401/403）。请检查密钥是否正确、是否有该模型的权限。')],
+    [/API HTTP status 404/, t('服务商返回 404：服务地址或模型 ID 不对。')],
+    [/API HTTP status 429/, t('服务商返回 429：请求过于频繁或额度不足。')],
+    [/API HTTP status 5\d\d/, t('服务商暂时出错（5xx），稍后再试。')],
+    [/connect timeout|transport failure|connect \(DNS/, t('连不上服务地址。请检查地址、网络或代理。')],
+    [/response timeout/, t('服务商在限定时间内没有答复。')],
+    [/API backend disabled or key unavailable/, t('这个连接已停用，或还没有保存密钥。')],
+    [/API cumulative request cap reached/, t('这个连接已达到你设置的累计请求上限。可在连接的高级设置里调高或取消上限。')],
+    [/Retrieved evidence does not fit/, t('检索到的资料放不进这个模型的输入容量。可在房间设置 → 上下文调大容量，或关闭检索后重试。')],
+    [/Unknown research lens/, t('所选研究视角不存在，可能已被删除。请重新选择。')],
+    [/Invalid API key format/, t('Key 格式不正确：至少 8 个字符，且不能包含空白。')],
+    [/Explicit provider model ID required/, t('需要填写模型 ID。')],
+    [/API requires HTTPS|base URL must not contain/, t('服务地址需为 https:// 开头，且不含账号、查询参数。')],
+    [/Still used by/, t('仍有聊天在使用这个连接，请先把那些聊天切换到其他连接。')],
 ];
 export function explain(text) {
     if (!text) return '';
-    for (const [pattern, message] of EXPLAIN) if (pattern.test(text)) return `${message}（${text}）`;
+    for (const [pattern, message] of EXPLAIN) if (pattern.test(text)) return t('{0}（{1}）', message, text);
     return text;
 }
 
@@ -134,7 +135,7 @@ export function toast(message, kind = 'info', ms) {
     const host = document.getElementById('toasts');
     const el = h('div', { class: 'toast ' + kind, role: kind === 'error' ? 'alert' : 'status' }, h('span', null, message));
     const drop = () => { el.remove(); if (!host.children.length && host.matches?.(':popover-open')) host.hidePopover(); };
-    if (kind === 'error') el.append(h('button', { class: 'toast-x', 'aria-label': '关闭', onclick: drop }, '×'));
+    if (kind === 'error') el.append(h('button', { class: 'toast-x', 'aria-label': t('关闭'), onclick: drop }, '×'));
     host.append(el);
     raise(host);
     setTimeout(drop, ms || (kind === 'error' ? 9000 : 4200));
@@ -190,10 +191,10 @@ export function modal({ title, body, actions = [], wide = false, onclose }) {
     const error = text => { errorEl.textContent = text || ''; errorEl.hidden = !text; };
     const content = h('div', { class: 'modal-body' }, body);
     const foot = h('div', { class: 'modal-foot' }, errorEl, h('span', { class: 'grow' }),
-        h('button', { class: 'btn', onclick: close }, actions.length ? '取消' : '关闭'),
+        h('button', { class: 'btn', onclick: close }, actions.length ? t('取消') : t('关闭')),
         actions.map(a => actionButton(a, close, error)));
     dialog.append(h('div', { class: 'modal-head' }, h('h2', null, title),
-        h('button', { class: 'icon-btn', onclick: close, 'aria-label': '关闭' }, icon(ICONS.close))), content, foot);
+        h('button', { class: 'icon-btn', onclick: close, 'aria-label': t('关闭') }, icon(ICONS.close))), content, foot);
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('mousedown', event => { if (event.target === dialog) close(); });
     layer().append(dialog);
@@ -239,8 +240,8 @@ export function fmtTime(ts) {
 export function fmtDay(ts) {
     const d = new Date(ts * 1000), now = new Date();
     const days = Math.round((new Date(now.toDateString()) - new Date(d.toDateString())) / 86400000);
-    if (days === 0) return '今天';
-    if (days === 1) return '昨天';
+    if (days === 0) return t('今天');
+    if (days === 1) return t('昨天');
     return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 export const fmtNum = n => (typeof n === 'number' ? n.toLocaleString('en-US') : 'UNKNOWN');

@@ -2,7 +2,9 @@
 the port and then calls main() here."""
 
 import asyncio
+import json
 import logging
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -10,6 +12,8 @@ from pathlib import Path
 # Ensure the project directory is on the import path
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
+
+import chattera_i18n
 
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
 
@@ -46,8 +50,11 @@ def main():
     async def index():
         # Read the page fresh each request and inject the session token. Same-origin policy keeps other sites
         # from reading the response, so only the user's own browser tab gets the token.
+        # The interface language and version ride along: i18n.js loads the dictionary before any module renders.
         html = (static_dir / "mc" / "index.html").read_text("utf-8")
-        injected = html.replace("</head>", f'<script>window.__SESSION_TOKEN__="{session_token}";</script>\n</head>')
+        boot = (f'window.__SESSION_TOKEN__="{session_token}";window.__CHATTERA_LANG__="{chattera_i18n.lang()}";'
+                f'window.__CHATTERA_VERSION__={json.dumps(os.environ.get("CHATTERA_VERSION", ""))};')
+        injected = html.replace("</head>", f'<script>{boot}</script>\n</head>')
         return HTMLResponse(injected, headers={"Cache-Control": "no-store"})
 
     class Revalidated(StaticFiles):

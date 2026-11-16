@@ -80,4 +80,8 @@ tests/               pytest suite (adds src/ to sys.path via conftest.py)
 - No personal paths, user names, keys or chat data in the repository — ever. `git grep` before committing.
 - Keep claims honest in code and UI: a capability is "UNKNOWN" until a real call verified it; a model being listed is
   not the same as it having been called successfully; search results are only cited when they were actually retrieved.
-- User-facing text is Chinese first; code comments and docs for developers are English.
+- User-facing text is bilingual. Chinese source text is the key: `t('…')` in `src/static/mc/*.js`, `_('…')` in Python
+  (`N_('…')` for module-level tables, translated where they are shown). English lives in `src/static/mc/i18n/en.json`,
+  shared by browser and server; `tests/test_i18n.py` fails on missing entries and on Chinese outside these calls. The
+  language comes from `config\settings.json` `"language"` (`auto` / `zh` / `en`). Model-facing text stays English.
+  Code comments and developer docs are English.

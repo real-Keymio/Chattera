@@ -6,6 +6,7 @@ adapter directly; it goes through `get(name)` and the `CLIAdapter` contract in b
 from .base import CLIAdapter, clean_environment
 from .claude_code import ClaudeCode
 from .codex import Codex
+from chattera_i18n import N_
 
 ADAPTERS = {}
 
@@ -34,8 +35,8 @@ register(Codex())
 
 # CLIs that may be installed but have no adapter. Found ≠ adapted ≠ able to chat.
 KNOWN_UNADAPTED = [
-    ('gemini', 'Gemini CLI', ('gemini',), 'Gemini CLI 有非交互模式，但 Chattera 还没有它的适配器；Gemini 目前可以通过 API 连接使用。'),
-    ('antigravity', 'Antigravity', ('agy', 'antigravity'), 'Antigravity 没有公开的、适合聊天后端使用的非交互接口。'),
+    ('gemini', 'Gemini CLI', ('gemini',), N_('Gemini CLI 有非交互模式，但 Chattera 还没有它的适配器；Gemini 目前可以通过 API 连接使用。')),
+    ('antigravity', 'Antigravity', ('agy', 'antigravity'), N_('Antigravity 没有公开的、适合聊天后端使用的非交互接口。')),
     ('qwen', 'Qwen Code', ('qwen',), ''),
     ('opencode', 'OpenCode', ('opencode',), ''),
 ]

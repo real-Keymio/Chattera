@@ -1,4 +1,4 @@
-// Renders the two user guides (docs/user-guide/*.html) to PDF with the installed Microsoft Edge.
+// Renders the user guides (docs/user-guide/*.html) to PDF with the installed Microsoft Edge.
 //   npm install --no-save playwright-core     (once, anywhere on NODE_PATH; no browser download is needed)
 //   node scripts/build_guides.js [output folder]          default: docs/user-guide/dist
 // Chinese text is embedded as subsetted system fonts (Microsoft YaHei), so it stays searchable and copyable.
@@ -8,7 +8,7 @@ const { chromium } = require('playwright-core');
 
 const root = path.resolve(__dirname, '..');
 const out = path.resolve(process.argv[2] || path.join(root, 'docs', 'user-guide', 'dist'));
-const guides = [['01_start.html', '01_先看这个.pdf'], ['02_full.html', '02_Chattera完整使用指南.pdf']];
+const guides = [['01_start.html', '01_先看这个.pdf'], ['02_full.html', '02_Chattera完整使用指南.pdf'], ['01_start_en.html', '01_Start_Here.pdf']];
 
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });

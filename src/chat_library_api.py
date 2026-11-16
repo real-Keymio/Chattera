@@ -8,6 +8,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse
 
 from chat_library import Library, DEFAULT_LIMIT
+from chattera_i18n import _
 
 
 def install(runtime, app_module, data_dir):
@@ -70,7 +71,7 @@ def install(runtime, app_module, data_dir):
                     if found: fields = dict(found[0], doi=ref)
                 except Exception: pass
             item = runtime.library.upsert(rid, fields, 'user', shared=body.get('shared') is not False)
-            if not item: raise ValueError('请填写 DOI 或 https:// 开头的网址')
+            if not item: raise ValueError(_('请填写 DOI 或 https:// 开头的网址'))
             changed(rid)
             return item
         except (ValueError, KeyError) as exc: return fail(exc)
@@ -82,7 +83,7 @@ def install(runtime, app_module, data_dir):
             rid = room_of(room_id)
             if action == 'share':
                 to = body.get('to')
-                if to not in ('room', 'none') and (not isinstance(to, list) or not to or set(to) - set(registry.active_ids())): raise ValueError('选择要分享给谁')
+                if to not in ('room', 'none') and (not isinstance(to, list) or not to or set(to) - set(registry.active_ids())): raise ValueError(_('选择要分享给谁'))
                 result = runtime.library.share(rid, item_id, to, body.get('notes') is True)
             elif action == 'fetch':
                 result = await asyncio.to_thread(runtime.library.fetch, rid, item_id, runtime.evidence)
@@ -93,7 +94,7 @@ def install(runtime, app_module, data_dir):
                 result = dict(kept=body.get('on') is not False)
             elif action == 'notes':
                 result = runtime.library.note(rid, item_id, 'user', body.get('text'), shared=body.get('shared') is True)
-                if not result: raise ValueError('笔记内容不能为空')
+                if not result: raise ValueError(_('笔记内容不能为空'))
             elif action == 'note-share':
                 note_id, on = body.get('note_id'), body.get('on') is not False
                 def flip(data):
@@ -113,14 +114,14 @@ def install(runtime, app_module, data_dir):
     async def text(room_id: str, item_id: str, offset: int = 0):
         try:
             part = runtime.library.text(room_of(room_id), item_id, offset, 12000)
-            return part or fail('全文还没有获取，或缓存已被清理', 404)
+            return part or fail(_('全文还没有获取，或缓存已被清理'), 404)
         except ValueError as exc: return fail(exc, 404)
 
     @api.get('/api/chat/rooms/{room_id}/library/{item_id}/file')
     async def original(room_id: str, item_id: str):
         try: path = runtime.library.original(room_of(room_id), item_id)
         except ValueError as exc: return fail(exc, 404)
-        if not path: return fail('没有缓存的原始文件', 404)
+        if not path: return fail(_('没有缓存的原始文件'), 404)
         return FileResponse(path, media_type='application/pdf', headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'})
 
     @api.get('/api/chat/rooms/{room_id}/library/{item_id}/page')
@@ -129,8 +130,8 @@ def install(runtime, app_module, data_dir):
         from fastapi.responses import Response
         try:
             path = runtime.library.original(room_of(room_id), item_id)
-            if not path: return fail('这份资料没有缓存的 PDF（可以先“获取全文”）', 404)
-            if not 1 <= page <= 2000: raise ValueError('页码无效')
+            if not path: return fail(_('这份资料没有缓存的 PDF（可以先“获取全文”）'), 404)
+            if not 1 <= page <= 2000: raise ValueError(_('页码无效'))
             png = (await asyncio.to_thread(runtime.attachments.worker, path, dict(mode='page', page=page), 40))['png']
         except (ValueError, OSError, KeyError) as exc: return fail(exc)
         return Response(base64.b64decode(png), media_type='image/png', headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
@@ -147,11 +148,11 @@ def install(runtime, app_module, data_dir):
                 value = dict(registry.data.get('library', {}))
                 if 'cache_limit_bytes' in body:
                     limit = body['cache_limit_bytes']
-                    if type(limit) is not int or not 0 <= limit <= 200 * (1 << 30): raise ValueError('缓存上限应在 0 到 200 GiB 之间')
+                    if type(limit) is not int or not 0 <= limit <= 200 * (1 << 30): raise ValueError(_('缓存上限应在 0 到 200 GiB 之间'))
                     value['cache_limit_bytes'] = limit
                 if 'root' in body:
                     root = Path(str(body['root'] or '').strip()) if body['root'] else Path(data_dir).resolve() / 'library'
-                    if not root.is_absolute(): raise ValueError('资料库位置需要是完整路径')
+                    if not root.is_absolute(): raise ValueError(_('资料库位置需要是完整路径'))
                     root.mkdir(parents=True, exist_ok=True)
                     value['root'] = str(root) if body['root'] else None
                     runtime.library = Library(root, settings)   # existing files are not moved: the old folder stays where it is

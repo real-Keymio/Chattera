@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start here — Chattera quick start</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  html { font-size: 10pt; line-height: 1.5; }
+  .step { margin: 2mm 0; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+  figure { margin: 1.5mm 0 0; }
+  h3 { font-size: 11pt; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <img src="../../src/static/mc/favicon.ico" alt="">
+  <div><h1>Start here: Chattera in 5 minutes<small>Chattera — A group chat for you and your AIs.</small></h1></div>
+</div>
+
+<div class="note money"><b>About cost:</b> Chattera itself is <b>free</b>. The demo connects to no AI and <b>costs nothing</b>.
+When you later connect real AI models, the provider you choose (for example DeepSeek or OpenAI) bills you directly for
+what you use; Chattera isn't involved.</div>
+
+<div class="step"><div class="num">1</div><div>
+  <h3>Extract</h3>
+  <p>Right-click the downloaded <code>Chattera-Windows-x64.zip</code> → <b class="ui">Extract All…</b> → <b class="ui">Extract</b>
+  (don't run it from inside the ZIP). Open the extracted folder; you'll see:</p>
+  <div class="files">Chattera.exe                  ← double-click to start
+01_Start_Here.pdf             ← this guide
+01_先看这个.pdf / 02_Chattera完整使用指南.pdf   ← the Chinese guides (the full guide is Chinese only for now)
+runtime   licenses   README.txt   LICENSE.txt   THIRD_PARTY_NOTICES.txt   VERSION</div>
+</div></div>
+
+<div class="row">
+  <div class="step"><div class="num">2</div><div>
+    <h3>Double-click <code>Chattera.exe</code></h3>
+    <p>A small start-up window appears (the first start takes about ten seconds), then Chattera's window opens.</p>
+    <figure><img src="img/splash-en.jpg" alt="Start-up window"><figcaption>Start-up window</figcaption></figure>
+    <div class="note warn">If Windows says “Windows protected your PC”: the program isn't code-signed. Only if you downloaded it
+    from Chattera's official release page, click <b class="ui">More info</b> → <b class="ui">Run anyway</b>.</div>
+  </div></div>
+  <div class="step"><div class="num">3</div><div>
+    <h3>Click “Open the demo” on the welcome page</h3>
+    <p>The first time, a welcome page appears. Start with <b class="ui">Open the demo</b> on the left: no account or key needed, and it's free.</p>
+    <figure><img src="img/01-welcome-crop-en.jpg" alt="Welcome page"><figcaption>Welcome page</figcaption></figure>
+  </div></div>
+</div>
+
+<div class="row">
+  <div class="step"><div class="num">4</div><div>
+    <h3>Say something</h3>
+    <p>Type a question in the box at the bottom and press <b class="ui">Enter</b>. Several AIs answer, each in turn
+    (in the demo the answers are prewritten examples marked “Demo reply”).</p>
+    <figure><img src="img/02-demo-chat-en.jpg" alt="Demo chat"><figcaption>Demo chat: four participants answer one question</figcaption></figure>
+  </div></div>
+  <div class="step"><div class="num">5</div><div>
+    <h3>Switch to real AI (needs an API key)</h3>
+    <p>An <b>API key</b> is the “pass” an AI provider gives you. Sign up on the provider's website, add credit, then create
+    and copy a key on its “API Keys” page (for example the DeepSeek platform at <code>platform.deepseek.com</code>). Then:</p>
+    <ol>
+      <li>Click <b class="ui">Settings</b> at the bottom left → <b class="ui">Models &amp; services</b> → <b class="ui">Add model</b>;</li>
+      <li>choose a provider (such as <b class="ui">DeepSeek</b>), paste the key into <b class="ui">API Key</b>, click <b class="ui">Connect and get models</b>;</li>
+      <li>tick a model, keep <b class="ui">Join chats</b> on, finish, then click <b class="ui">New chat</b> and ask.</li>
+    </ol>
+    <figure><img src="img/07-add-deepseek-crop-en.jpg" alt="Entering the API key"><figcaption>The key is stored only on your computer and never shown again</figcaption></figure>
+  </div></div>
+</div>
+
+<div class="step"><div class="num">6</div><div>
+  <h3>Language and quitting</h3>
+  <p>Chattera follows the Windows display language; change it any time in <b class="ui">Settings</b> → <b class="ui">General</b> →
+  <b class="ui">Language</b>. Closing the window does <b>not</b> quit Chattera. To quit completely, right-click the Chattera icon in the
+  notification area at the bottom right → <b class="ui">Quit Chattera</b>, or click <b class="ui">Help</b> → <b class="ui">Quit Chattera</b>
+  inside Chattera. Double-click <code>Chattera.exe</code> to open it again.</p>
+</div></div>
+
+<p class="foot">Columns, the free canvas, web retrieval, the research library, data and troubleshooting are covered in the full
+guide (Chinese, <code>02_Chattera完整使用指南.pdf</code>) and in Chattera's Help.</p>
+</body>
+</html>

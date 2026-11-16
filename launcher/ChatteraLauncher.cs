@@ -14,6 +14,7 @@
 // Built with the C# compiler that ships with Windows (.NET Framework 4, C# 5 syntax): see Build-Launcher.ps1.
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -26,6 +27,21 @@ using System.Windows.Forms;
 static class Program
 {
     public static string Root, Home;
+    public static bool English;
+
+    /// <summary>Text in the interface language: config\\settings.json "language" (zh / en), else the Windows display language.</summary>
+    public static string L(string zh, string en) { return English ? en : zh; }
+
+    static bool ChooseEnglish(string[] args)
+    {
+        int at = Array.IndexOf(args, "--lang");
+        if (at > 0 && at + 1 < args.Length) return args[at + 1] == "en";
+        string setting = null;
+        try { setting = Service.Field(File.ReadAllText(Path.Combine(Home, "config", "settings.json")), "language"); } catch { }
+        if (setting == "en") return true;
+        if (setting == "zh") return false;
+        return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName != "zh";
+    }
 
     [STAThread]
     static void Main()
@@ -33,19 +49,20 @@ static class Program
         Root = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
         string[] args = Environment.GetCommandLineArgs();
         int render = Array.IndexOf(args, "--render-splash");
+        Home = DataHome();
+        English = ChooseEnglish(args);
         if (render > 0 && render + 1 < args.Length)
         {
             // documentation screenshots: draw the real start-up window into a PNG and exit
             using (Splash splash = new Splash())
             using (Bitmap image = new Bitmap(splash.ClientSize.Width, splash.ClientSize.Height))
             {
-                splash.Status = "正在启动 Chattera…（第一次启动会稍慢）";
+                splash.Status = L("正在启动 Chattera…（第一次启动会稍慢）", "Starting Chattera… (the first start takes a little longer)");
                 splash.DrawToBitmap(image, new Rectangle(0, 0, image.Width, image.Height));
                 image.Save(args[render + 1], System.Drawing.Imaging.ImageFormat.Png);
             }
             return;
         }
-        Home = DataHome();
         string key = "ChatteraLauncher-" + Hash(Home.ToLowerInvariant());
         bool first;
         using (Mutex mutex = new Mutex(true, "Local\\" + key, out first))
@@ -100,7 +117,7 @@ static class Service
 {
     static string StateFile { get { return Path.Combine(Program.Home, "run", "server.json"); } }
 
-    static string Field(string json, string name)
+    public static string Field(string json, string name)
     {
         Match m = Regex.Match(json, "\"" + name + "\"\\s*:\\s*(\"(?<s>[^\"]*)\"|(?<n>[0-9]+))");
         if (!m.Success) return null;
@@ -148,7 +165,7 @@ static class Service
         string entry = Path.Combine(Program.Root, "src", "chattera.py");
         if (File.Exists(pythonw) && File.Exists(entry))
             return Info(pythonw, "\"" + entry + "\"" + home, Path.Combine(Program.Root, "src"));
-        problem = "在程序文件夹里找不到 Chattera 服务（runtime\\chattera-server.exe）。请重新解压完整的 Chattera 压缩包。";
+        problem = Program.L("在程序文件夹里找不到 Chattera 服务（runtime\\chattera-server.exe）。请重新解压完整的 Chattera 压缩包。", "The Chattera server (runtime\\chattera-server.exe) isn't in the program folder. Extract the complete Chattera ZIP again.");
         return null;
     }
 
@@ -168,16 +185,16 @@ static class Service
         try { if (File.Exists(StateFile)) File.Delete(StateFile); } catch { }
         Process process;
         try { process = Process.Start(info); }
-        catch (Exception error) { Program.Log("server could not start: " + error.Message); return "无法启动 Chattera 服务：" + error.Message; }
+        catch (Exception error) { Program.Log("server could not start: " + error.Message); return Program.L("无法启动 Chattera 服务：", "Couldn't start the Chattera server: ") + error.Message; }
         Program.Log("server started: " + info.FileName + " (pid " + process.Id + ")");
         // the first start can take longer: it creates the data folder and asks installed CLIs for their model lists
         for (int i = 0; i < 240; i++)
         {
             if (Url() != null) return null;
-            if (process.HasExited) return "Chattera 服务启动后立即退出了（代码 " + process.ExitCode + "）。详情见日志文件夹中的 server.log。";
+            if (process.HasExited) return Program.L("Chattera 服务启动后立即退出了（代码 ", "The Chattera server exited right after starting (code ") + process.ExitCode + Program.L("）。详情见日志文件夹中的 server.log。", "). See server.log in the logs folder.");
             Thread.Sleep(500);
         }
-        return "Chattera 服务启动超过 2 分钟仍未就绪。详情见日志文件夹中的 server.log。";
+        return Program.L("Chattera 服务启动超过 2 分钟仍未就绪。详情见日志文件夹中的 server.log。", "The Chattera server wasn't ready after 2 minutes. See server.log in the logs folder.");
     }
 
     /// <summary>Asks the server to quit (the same as 设置 → 帮助 → 退出), and waits until it is gone.</summary>
@@ -198,7 +215,7 @@ static class Service
         }
         catch (Exception error) { Program.Log("quit request failed: " + error.Message); }
         for (int i = 0; i < 40; i++) { if (Url() == null) return null; Thread.Sleep(250); }
-        return "Chattera 服务没有响应退出请求。";
+        return Program.L("Chattera 服务没有响应退出请求。", "The Chattera server didn't respond to the quit request.");
     }
 
     /// <summary>Chattera in its own window: Edge app mode when Edge is installed (a real browser, so uploads,
@@ -251,6 +268,7 @@ static class Service
     public static void OpenGuide()
     {
         string guide = Path.Combine(Program.Root, "01_先看这个.pdf");
+        if (Program.English && File.Exists(Path.Combine(Program.Root, "01_Start_Here.pdf"))) guide = Path.Combine(Program.Root, "01_Start_Here.pdf");
         try { if (File.Exists(guide)) Process.Start(guide); } catch { }
     }
 }
@@ -261,7 +279,7 @@ class Splash : Form
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
     readonly Color[] hues = { Color.FromArgb(255, 141, 94), Color.FromArgb(61, 220, 174), Color.FromArgb(110, 169, 255), Color.FromArgb(181, 146, 255) };
     readonly Stopwatch clock = Stopwatch.StartNew();
-    public string Status = "正在检查 Chattera…";
+    public string Status = Program.L("正在检查 Chattera…", "Checking Chattera…");
     public string Problem;
     public Button Retry, Logs, Quit;
 
@@ -271,7 +289,7 @@ class Splash : Form
         Text = "Chattera"; ClientSize = new Size(480, 300); BackColor = Color.FromArgb(9, 11, 17); DoubleBuffered = true;
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         using (GraphicsPath path = Rounded(new Rectangle(0, 0, Width, Height), 22)) Region = new Region(path);
-        Retry = Make("重试", 150); Logs = Make("打开日志", 250); Quit = Make("关闭", 350);
+        Retry = Make(Program.L("重试", "Retry"), 150); Logs = Make(Program.L("打开日志", "Open logs"), 250); Quit = Make(Program.L("关闭", "Close"), 350);
         timer.Interval = 33; timer.Tick += delegate { Invalidate(); }; timer.Start();
         MouseDown += delegate(object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) { ReleaseCapture(); SendMessage(Handle, 0xA1, (IntPtr)2, IntPtr.Zero); } };
     }
@@ -353,17 +371,17 @@ class Launcher : ApplicationContext
         tray.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         tray.Text = "Chattera";
         ContextMenuStrip menu = new ContextMenuStrip();
-        menu.Items.Add("打开 Chattera", null, delegate { Work(false, true); });
-        menu.Items.Add("重新启动", null, delegate { Work(true, true); });
+        menu.Items.Add(Program.L("打开 Chattera", "Open Chattera"), null, delegate { Work(false, true); });
+        menu.Items.Add(Program.L("重新启动", "Restart"), null, delegate { Work(true, true); });
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("使用指南", null, delegate { Service.OpenGuide(); });
-        menu.Items.Add("打开数据文件夹", null, delegate { Service.OpenFolder(null); });
-        menu.Items.Add("打开日志文件夹", null, delegate { Service.OpenFolder("logs"); });
-        menu.Items.Add("在桌面创建快捷方式", null, delegate {
+        menu.Items.Add(Program.L("使用指南", "Guide"), null, delegate { Service.OpenGuide(); });
+        menu.Items.Add(Program.L("打开数据文件夹", "Open data folder"), null, delegate { Service.OpenFolder(null); });
+        menu.Items.Add(Program.L("打开日志文件夹", "Open logs folder"), null, delegate { Service.OpenFolder("logs"); });
+        menu.Items.Add(Program.L("在桌面创建快捷方式", "Create desktop shortcut"), null, delegate {
             string problem = Service.MakeShortcut();
-            tray.ShowBalloonTip(3000, "Chattera", problem == null ? "已在桌面创建“Chattera”快捷方式。" : "没能创建快捷方式：" + problem, ToolTipIcon.Info); });
+            tray.ShowBalloonTip(3000, "Chattera", problem == null ? Program.L("已在桌面创建“Chattera”快捷方式。", "Created a “Chattera” shortcut on the desktop.") : Program.L("没能创建快捷方式：", "Couldn't create the shortcut: ") + problem, ToolTipIcon.Info); });
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出 Chattera", null, delegate { Shutdown(true); });
+        menu.Items.Add(Program.L("退出 Chattera", "Quit Chattera"), null, delegate { Shutdown(true); });
         tray.ContextMenuStrip = menu;
         tray.MouseClick += delegate(object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) Work(false, true); };
         tray.Visible = true;
@@ -392,20 +410,20 @@ class Launcher : ApplicationContext
                 if (restart && url != null)
                 {
                     ui.Post(delegate { splash.Opacity = 1; splash.Show(); }, null);
-                    Say("正在停止 Chattera…");
+                    Say(Program.L("正在停止 Chattera…", "Stopping Chattera…"));
                     problem = Service.Stop();
                     url = null;
                 }
                 if (problem == null && url == null)
                 {
                     ui.Post(delegate { splash.Opacity = 1; splash.Show(); }, null);
-                    Say("正在启动 Chattera…（第一次启动会稍慢）");
+                    Say(Program.L("正在启动 Chattera…（第一次启动会稍慢）", "Starting Chattera… (the first start takes a little longer)"));
                     problem = Service.Start();
                     url = Service.Url();
                 }
                 if (problem == null && url != null)
                 {
-                    Say("就绪");
+                    Say(Program.L("就绪", "Ready"));
                     Program.Log("ready at " + url);
                     if (show) Service.OpenWindow(url);
                     ui.Post(delegate { FadeOut(); }, null);
@@ -415,7 +433,7 @@ class Launcher : ApplicationContext
             if (problem != null)
             {
                 Program.Log("problem: " + problem);
-                string text = "没能启动 Chattera：" + problem;
+                string text = Program.L("没能启动 Chattera：", "Couldn't start Chattera: ") + problem;
                 ui.Post(delegate { splash.Opacity = 1; splash.Show(); splash.ShowProblem(text); }, null);
             }
             busy = false;
@@ -440,10 +458,10 @@ class Launcher : ApplicationContext
     {
         if (stopServer)
         {
-            splash.Opacity = 1; splash.Show(); splash.ClearProblem(); splash.Status = "正在退出 Chattera…"; splash.Refresh();
+            splash.Opacity = 1; splash.Show(); splash.ClearProblem(); splash.Status = Program.L("正在退出 Chattera…", "Quitting Chattera…"); splash.Refresh();
             string problem = Service.Stop();
             Program.Log(problem == null ? "Chattera quit from the launcher" : "quit failed: " + problem);
-            if (problem != null) { splash.ShowProblem("没能退出：" + problem); return; }
+            if (problem != null) { splash.ShowProblem(Program.L("没能退出：", "Couldn't quit: ") + problem); return; }
         }
         tray.Visible = false; tray.Dispose();
         ExitThread();

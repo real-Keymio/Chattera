@@ -19,13 +19,14 @@ from chat_identities import IDENTITIES, BUILTIN
 from chat_secrets import get_key, key_path, redact, remember
 from model_settings import API_TYPES, CLI_EFFORT, merge
 from chat_search import native_kind, NATIVE
+from chattera_i18n import _, N_
 
 NAME = r'[a-z][a-z0-9_-]{0,63}'
 MODEL = r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}'
 BUILTIN_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'antigravity': 'Gemini', 'deepseek': 'DeepSeek'}
 BUILTIN_COLORS = {'claude': '#c8643c', 'codex': '#2f8f7a', 'antigravity': '#4a78d6', 'deepseek': '#7a5cc8'}
 PALETTE = ['#c2477f', '#b8862b', '#3f9fb5', '#6b8f3a', '#d0603a', '#8a6fd1', '#2f7fb8', '#a8576f', '#4f9a6e', '#9a7a3c']
-EFFORT_LABELS = {'none': '关闭', 'minimal': '极低', 'low': '低', 'medium': '中', 'high': '高', 'xhigh': '超高', 'max': '最大', 'ultra': '极限'}
+EFFORT_LABELS = {'none': N_('无'), 'minimal': N_('极低'), 'low': N_('低'), 'medium': N_('中'), 'high': N_('高'), 'xhigh': N_('超高'), 'max': N_('最大'), 'ultra': N_('极限')}
 RESERVED = {'legacy', 'mock', 'system', 'user', 'all', 'both', 'you', 'human', 'public'}
 import cli_adapters as _adapters
 CLI_LABELS = {name: _adapters.get(name).label for name in _adapters.names()}
@@ -37,29 +38,29 @@ PROFILE_FIELDS = {'identity', 'protocol', 'base_url', 'model', 'enabled', 'timeo
                   'provider', 'anthropic_version', 'anthropic_auth', 'native_search', 'google_auth'}
 
 LENSES = {
- 'open': dict(name='开放科学讨论', builtin=True, summary='默认。自然交流，质疑前提，保留分歧，不把讨论变成交付任务。', method=''),
- 'design': dict(name='研究设计与方法审查', builtin=True, summary='变量操作化、测量效度、对照、混杂、可重复性。', method=(
+ 'open': dict(name=N_('开放科学讨论'), builtin=True, summary=N_('默认。自然交流，质疑前提，保留分歧，不把讨论变成交付任务。'), method=''),
+ 'design': dict(name=N_('研究设计与方法审查'), builtin=True, summary=N_('变量操作化、测量效度、对照、混杂、可重复性。'), method=(
   'For this reply, read the question as a methodologist would. Work out what was (or would be) actually manipulated and measured, and whether '
   'those operationalisations capture the construct the claim is about. Look for what the comparison is against: the control or counterfactual, '
   'how units were assigned, what else differs between groups, and which confounders or selection steps could produce the same result. Ask what '
   'observation would have contradicted the hypothesis and whether the design could have produced it. Consider measurement validity and '
   'reliability, blinding, pre-specification, and whether someone else could repeat the procedure from what is reported. Say which weaknesses '
   'would change the conclusion and which are minor. This is a way of looking, not a verdict to reach: if the design is sound, say so plainly.')),
- 'stats': dict(name='统计与因果推断', builtin=True, summary='效应量、区间、统计假设、样本量、选择偏倚、因果识别。', method=(
+ 'stats': dict(name=N_('统计与因果推断'), builtin=True, summary=N_('效应量、区间、统计假设、样本量、选择偏倚、因果识别。'), method=(
   'For this reply, reason as a statistician concerned with what the numbers can support. Prefer effect sizes with intervals over significance '
   'labels; check whether the sample size and variance make the reported precision plausible. Name the assumptions the analysis depends on '
   '(independence, distributional form, missing-data mechanism, multiplicity, model specification) and whether they are likely to hold. '
   'Separate association from causal claims: state the identification strategy, the estimand, and what selection, reverse causation, '
   'collider or measurement bias could do to it. When numbers are given, check them (use the calculation tool if it is available) rather than '
   'trusting the arithmetic. Distinguish "no evidence of an effect" from "evidence of no effect". Do not invent statistics that were not provided.')),
- 'evidence': dict(name='文献与证据审查', builtin=True, summary='来源、证据等级、方法与结论的对应、未被证实的推断。', method=(
+ 'evidence': dict(name=N_('文献与证据审查'), builtin=True, summary=N_('来源、证据等级、方法与结论的对应、未被证实的推断。'), method=(
   'For this reply, act as a careful reader of sources. For each substantive claim, ask where it comes from and how strong that kind of source '
   'is (systematic review, trial, observational study, preprint, expert opinion, secondary reporting). Check whether the cited methods can '
   'support the stated conclusion, and mark where the text moves from what was shown to what is inferred. Keep three things apart: what you '
   'read in material supplied in this conversation, what a retrieval tool returned in this turn and at what depth (metadata, abstract, full '
   'text), and what you recall from training. Cite only sources you can trace, with their identifier; if you could not read something, say so '
   'instead of summarising it from memory. Note relevant evidence that is missing or that would cut the other way.')),
- 'transfer': dict(name='跨学科与转化研究', builtin=True, summary='方法与结论能否迁移到其他领域、人群和应用环境。', method=(
+ 'transfer': dict(name=N_('跨学科与转化研究'), builtin=True, summary=N_('方法与结论能否迁移到其他领域、人群和应用环境。'), method=(
   'For this reply, think about transfer. Identify the conditions under which the finding or method was established (population, model system, '
   'scale, setting, time horizon, measurement tools) and ask which of those conditions the result depends on. Consider how it would '
   'behave in a different field, population or practical setting: which assumptions travel, which mechanisms are likely shared, and '
@@ -273,7 +274,7 @@ class Registry:
         return redact(view)
 
     def lenses(self):
-        return {**{k: dict(v, id=k) for k, v in LENSES.items()}, **{k: dict(v, id=k, builtin=False) for k, v in self.data['lenses'].items()}}
+        return {**{k: dict(v, id=k, name=_(v['name']), summary=_(v['summary'])) for k, v in LENSES.items()}, **{k: dict(v, id=k, builtin=False) for k, v in self.data['lenses'].items()}}
 
     def search_settings(self):
         value = dict(web_provider='duckduckgo', reader_fallback=True, planner='auto')
@@ -337,7 +338,7 @@ def install(runtime, app_module, cfg, config_path):
         return redact(dict(
             participants=[dict(row, available=bool(row['connection'] in tasks.backends and tasks.capabilities(row['connection'])['available']),
                                legacy_capable=row['id'] in BUILTIN[:3]) for row in registry.participants()],
-            effort_labels=EFFORT_LABELS,
+            effort_labels={k: _(v) for k, v in EFFORT_LABELS.items()},
             profiles=profiles, catalog=catalog, combos=registry.data['combos'], defaults=registry.defaults(),
             verification=verification, lenses=list(registry.lenses().values()),
             search=dict(search, web_key_present=(registry.private / ('search_' + search['web_provider'] + '.key')).exists(),
@@ -364,7 +365,7 @@ def install(runtime, app_module, cfg, config_path):
         try:
             label = str(body.get('label') or '').strip()[:40]
             if not name:
-                if not label: raise ValueError('给这个连接起个名字')
+                if not label: raise ValueError(_('给这个连接起个名字'))
                 name = slug(label, set(registry.backends()) | set(registry.data['removed']) | {'legacy', 'mock', *BUILTIN[:3]}, 'api-' + uuid.uuid4().hex[:6])
             if not re.fullmatch(NAME, name) or name in ('legacy', 'mock', *BUILTIN[:3]) or name.startswith('search_'):
                 raise ValueError('Profile name: lowercase letters, digits, - or _, starting with a letter; reserved names are not allowed')
@@ -425,7 +426,7 @@ def install(runtime, app_module, cfg, config_path):
                 if not new: new = slug(name + '-copy', set(registry.backends()) | set(registry.data['removed']), 'api-' + uuid.uuid4().hex[:6])
                 if not re.fullmatch(NAME, new) or new in registry.backends() or new in ('legacy', 'mock', *BUILTIN[:3]) or new.startswith('search_'):
                     raise ValueError('Choose a new, unused profile name')
-                registry.data['meta'][new] = dict(registry.data['meta'].get(name, {}), label=(str(body.get('label') or '').strip() or registry.connection_label(name) + ' 副本')[:40])
+                registry.data['meta'][new] = dict(registry.data['meta'].get(name, {}), label=(str(body.get('label') or '').strip() or registry.connection_label(name) + _(' 副本'))[:40])
                 value = {k: v for k, v in source.items() if k not in ('key_env', 'key_file', 'model_capabilities', 'model_contexts', 'verified_cli')}
                 value['key_file'] = str(registry.key_file(new))
                 registry.data['profiles'][new] = value
@@ -446,9 +447,9 @@ def install(runtime, app_module, cfg, config_path):
                 source = registry.backends().get(name)
                 if not source or source.get('type') not in API_TYPES: raise ValueError('Only API profiles can be removed')
                 people = bound(name)
-                if people: raise ValueError('还有参与者在使用这个连接：' + '、'.join(people[:5]) + '。请先给他们换一个连接，或移除这些参与者。')
+                if people: raise ValueError(_('还有参与者在使用这个连接：') + _('、').join(people[:5]) + _('。请先给他们换一个连接，或移除这些参与者。'))
                 used = rooms_using(name)
-                if used: raise ValueError('这些聊天里有参与者被切换到了该连接：' + '、'.join(used[:5]) + '。请先在聊天里换回。')
+                if used: raise ValueError(_('这些聊天里有参与者被切换到了该连接：') + _('、').join(used[:5]) + _('。请先在聊天里换回。'))
                 tasks.cancel_backend(name)
                 registry.data['profiles'].pop(name, None)
                 if name in registry.base: registry.data['removed'].append(name)
@@ -562,7 +563,7 @@ def install(runtime, app_module, cfg, config_path):
         if cfg is None: raise ValueError('Unknown backend')
         api_kind = cfg.get('type') in API_TYPES
         model = str(body.get('id', ''))
-        if not re.fullmatch(MODEL, model): raise ValueError('模型 ID 只能包含字母、数字和 . _ : / -')
+        if not re.fullmatch(MODEL, model): raise ValueError(_('模型 ID 只能包含字母、数字和 . _ : / -'))
         models = registry.data['catalog'].setdefault(backend, {})
         new = model not in models
         entry = dict(models.get(model, {'added_at': time.time(), 'source': str(body.get('source', 'added by hand'))[:80]}))
@@ -574,11 +575,11 @@ def install(runtime, app_module, cfg, config_path):
         if 'window_tokens' in body:
             window = body['window_tokens']
             if window in (None, ''): entry.pop('window_tokens', None)
-            elif type(window) is not int or not 4096 <= window <= 2_000_000: raise ValueError('上下文窗口应在 4096 到 2000000 Token 之间')
+            elif type(window) is not int or not 4096 <= window <= 2_000_000: raise ValueError(_('上下文窗口应在 4096 到 2000000 Token 之间'))
             else:
                 entry['window_tokens'] = window
                 entry['window_status'] = body.get('window_status') if body.get('window_status') in ('VERIFIED', 'DOCUMENTED', 'PROVIDER-REPORTED') else 'UNKNOWN'
-                if not isinstance(body.get('window_source'), str): entry['window_source'] = '手动填写'
+                if not isinstance(body.get('window_source'), str): entry['window_source'] = _('手动填写')
         if 'effort_values' in body:
             levels = body['effort_values'] or []
             if not isinstance(levels, list) or any(not isinstance(x, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,40}', x) for x in levels):
@@ -595,7 +596,7 @@ def install(runtime, app_module, cfg, config_path):
             # No stated window: assume one so the model can be used, and say that it is an assumption.
             same = cfg.get('context', {}) if not api_kind else {}
             entry.update(window_tokens=same.get('window_tokens', 400000) if not api_kind else 128000, window_status='UNKNOWN',
-                         window_source='沿用该订阅默认模型的窗口（未核实）' if not api_kind else '默认假设 128K（未核实）')
+                         window_source=_('沿用该订阅默认模型的窗口（未核实）') if not api_kind else _('默认假设 128K（未核实）'))
         if api_kind and new:
             entry.setdefault('tools', False); entry.setdefault('images', False)
         models[model] = entry
@@ -607,7 +608,7 @@ def install(runtime, app_module, cfg, config_path):
             policy(effective, bool(caps.get('tools', effective.get('tools'))) if api_kind else True)
         except ValueError:
             need = (cfg.get('max_output_tokens', 8192) if api_kind else 128000) + (4096 if api_kind else 32000) + 208512
-            raise ValueError(f'「{entry["label"]}」的上下文窗口太小，放不下工具调用的预留空间（至少约 {need // 1000 + 1}K）。请填写它的实际窗口，或关闭工具调用。') from None
+            raise ValueError(_('「{0}」的上下文窗口太小，放不下工具调用的预留空间（至少约 {1}K）。请填写它的实际窗口，或关闭工具调用。', entry["label"], need // 1000 + 1)) from None
         return model
 
     @api.post('/api/chat/catalog/{backend}')
@@ -646,9 +647,9 @@ def install(runtime, app_module, cfg, config_path):
                              effort_values=levels, images=('image' in modalities) if isinstance(modalities, list) else (declared.get('images') if type(declared.get('images')) is bool else None)))
         source = str(raw.get('source', ''))
         denied = 'HTTP 401' in source or 'HTTP 403' in source
-        reason = {'BLOCKED': '这个连接还没有可用的密钥，或已停用。',
-                  'UNKNOWN': '服务商拒绝了这个密钥（401/403）。' if denied else '服务商没有提供模型列表（' + source[:80] + '）。'}.get(raw.get('status'))
-        return dict(models=rows, ok=raw.get('status') == 'VERIFIED', reason=reason, auth=False if denied else None, source='服务商的 /models 接口')
+        reason = {'BLOCKED': _('这个连接还没有可用的密钥，或已停用。'),
+                  'UNKNOWN': _('服务商拒绝了这个密钥（401/403）。') if denied else _('服务商没有提供模型列表（') + source[:80] + _('）。')}.get(raw.get('status'))
+        return dict(models=rows, ok=raw.get('status') == 'VERIFIED', reason=reason, auth=False if denied else None, source=_('服务商的 /models 接口'))
 
     @api.post('/api/chat/connections/probe')
     async def probe(request: Request):
@@ -699,7 +700,7 @@ def install(runtime, app_module, cfg, config_path):
                 rows = {row['id']: row for row in registry.participants()}
                 if pid is None:
                     label = str(body.get('label') or '').strip()
-                    if not 1 <= len(label) <= 40: raise ValueError('给参与者起个名字（1–40 个字符）')
+                    if not 1 <= len(label) <= 40: raise ValueError(_('给参与者起个名字（1–40 个字符）'))
                     taken = set(IDENTITIES) | RESERVED | {str(app_module.room_settings.get('username', 'user')).lower()}
                     pid = slug(body.get('slug') or label, taken, 'p-' + uuid.uuid4().hex[:6])
                     used = {row['color'] for row in rows.values()}
@@ -713,15 +714,15 @@ def install(runtime, app_module, cfg, config_path):
                     if value in (None, ''): saved.pop(key, None); continue
                     if key == 'label':
                         value = str(value).strip()
-                        if not 1 <= len(value) <= 40: raise ValueError('名字需要 1–40 个字符')
-                        if any(row['label'] == value and row['id'] != pid and not row['retired'] for row in rows.values()): raise ValueError('已经有同名的参与者')
+                        if not 1 <= len(value) <= 40: raise ValueError(_('名字需要 1–40 个字符'))
+                        if any(row['label'] == value and row['id'] != pid and not row['retired'] for row in rows.values()): raise ValueError(_('已经有同名的参与者'))
                     elif key == 'color':
                         if not re.fullmatch(r'#[0-9a-fA-F]{6}', str(value)): raise ValueError('Invalid colour')
                     elif key == 'connection':
                         if value != 'legacy' and value not in registry.backends(): raise ValueError('Unknown connection')
                     elif key in ('hidden', 'retired'):
                         if type(value) is not bool: raise ValueError(key + ' must be true or false')
-                        if key == 'retired' and pid in BUILTIN: raise ValueError('内置参与者不能移除，可以改为不在选择器中显示')
+                        if key == 'retired' and pid in BUILTIN: raise ValueError(_('内置参与者不能移除，可以改为不在选择器中显示'))
                         if not value: saved.pop(key, None); continue
                     saved[key] = value
                 registry.data['participants'][pid] = saved
@@ -729,7 +730,7 @@ def install(runtime, app_module, cfg, config_path):
                 try:
                     row = registry.participant(pid)
                     if not row['retired']:
-                        if not row['connection']: raise ValueError('选择这个参与者使用的连接')
+                        if not row['connection']: raise ValueError(_('选择这个参与者使用的连接'))
                         if row['connection'] != 'legacy' and row['model'] is not None:
                             fitted = registry.default_effort(row['connection'], row['model'], row['effort'] or registry.backends()[row['connection']].get('effort'))
                             if row['effort'] is None and fitted != registry.backends()[row['connection']].get('effort'): saved['effort'] = fitted
@@ -752,7 +753,7 @@ def install(runtime, app_module, cfg, config_path):
     async def remove_participant(pid: str):
         """Remove a participant from chats. If it ever spoke or was addressed, its record is kept (retired) so history keeps its name."""
         try:
-            if pid in BUILTIN: raise ValueError('内置参与者不能移除，可以改为不在选择器中显示')
+            if pid in BUILTIN: raise ValueError(_('内置参与者不能移除，可以改为不在选择器中显示'))
             with registry.lock, tasks.lock:
                 if pid not in registry.data['participants']: raise ValueError('Unknown participant')
                 tasks.cancel(model=pid)

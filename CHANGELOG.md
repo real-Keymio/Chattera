@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — English interface
+
+- **English and Chinese interface.** Chattera follows the Windows display language; switch any time in
+  Settings → General → Language (stored in `config\settings.json`). Covers the whole web interface, server messages,
+  the demo chat, and the launcher's start-up window and tray menu.
+- **English quick start** (`01_Start_Here.pdf`) in the ZIP and under Help. The full guide is still Chinese only.
+- Room names, chats and anything you typed stay as written; switching language never rewrites them.
+- Quick prompts and “respond” presets follow the interface language; lens methods sent to models stay English.
+
 ## 0.1.0 — first public release (pre-release)
 
 A group chat for you and your AIs, running on your own computer.

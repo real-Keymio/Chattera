@@ -11,11 +11,12 @@ import { S, IDS, ALL, on, emit, label, color, sigil, activeRoom, roomOf } from '
 import { canvasApi, scrollToMessage, copyTurn } from './panes.js';
 import { loadLibrary, libraryItems, sourceBody } from './library.js';
 import { wsGet, wsSet } from './workspace.js';
+import { t } from './i18n.js';
 
 let root = null, world = null, links = null, hint = null, zoomLabel = null, channel = null, state = null, top = 1, focused = null;
 const nodes = new Map();   // window id -> {win, el, body, pane?}
 const DEFAULT = { turn: [640, 660], message: [520, 420], view: [460, 560], quote: [360, 200], pdf: [520, 680], source: [440, 420], note: [320, 220] };
-const NAMES = { message: '消息', view: '对话视图', quote: '引用', pdf: 'PDF 页面', source: '资料', note: '笔记' };
+const NAMES = { message: t('消息'), view: t('对话视图'), quote: t('引用'), pdf: t('PDF 页面'), source: t('资料'), note: t('笔记') };
 
 const load = name => { const saved = wsGet('canvas', name); return saved?.windows ? saved : { x: 40, y: 30, k: 1, windows: [] }; };
 let saveTimer = 0;
@@ -79,13 +80,13 @@ function raise(win) {
 function titleOf(win) {
     if (win.kind === 'message' || win.kind === 'quote') {
         const msg = S.msgs.get(win.ref), ai = msg && ALL.includes(msg.sender);
-        return [ai ? sigil(msg.sender, 'xs') : icon(win.kind === 'quote' ? ICONS.reply : ICONS.doc, 14), h('span', null, `${win.kind === 'quote' ? '引用 · ' : ''}${msg ? (ai ? label(msg.sender) : '你') : '消息'} #${win.ref}`)];
+        return [ai ? sigil(msg.sender, 'xs') : icon(win.kind === 'quote' ? ICONS.reply : ICONS.doc, 14), h('span', null, `${win.kind === 'quote' ? t('引用 · ') : ''}${msg ? (ai ? label(msg.sender) : t('你')) : t('消息')} #${win.ref}`)];
     }
-    if (win.kind === 'turn') return [icon(ICONS.users, 14), h('span', null, `一轮讨论 #${win.ref} · ${canvasApi.answers(win.ref).length} 个回答`)];
-    if (win.kind === 'view') return [win.ref ? sigil(win.ref, 'xs') : icon(ICONS.columns, 14), h('span', null, win.ref ? `${label(win.ref)} 的回答` : '完整对话')];
-    if (win.kind === 'pdf') return [icon(ICONS.doc, 14), h('span', null, `${win.name || 'PDF'} · 第 ${win.page || 1} 页`)];
-    if (win.kind === 'source') { const item = libraryItems(roomOf(channel)).find(i => i.id === win.ref); return [icon(item?.kind === 'paper' ? ICONS.book : ICONS.globe, 14), h('span', null, item?.title || '资料')]; }
-    return [icon(ICONS.edit, 14), h('span', null, '笔记')];
+    if (win.kind === 'turn') return [icon(ICONS.users, 14), h('span', null, t('一轮讨论 #{0} · {1} 个回答', win.ref, canvasApi.answers(win.ref).length))];
+    if (win.kind === 'view') return [win.ref ? sigil(win.ref, 'xs') : icon(ICONS.columns, 14), h('span', null, win.ref ? t('{0} 的回答', label(win.ref)) : t('完整对话'))];
+    if (win.kind === 'pdf') return [icon(ICONS.doc, 14), h('span', null, t('{0} · 第 {1} 页', win.name || 'PDF', win.page || 1))];
+    if (win.kind === 'source') { const item = libraryItems(roomOf(channel)).find(i => i.id === win.ref); return [icon(item?.kind === 'paper' ? ICONS.book : ICONS.globe, 14), h('span', null, item?.title || t('资料'))]; }
+    return [icon(ICONS.edit, 14), h('span', null, t('笔记'))];
 }
 async function fill(win) {
     const node = nodes.get(win.id), body = node.body, room = roomOf(channel);
@@ -99,51 +100,51 @@ async function fill(win) {
             return h('section', { class: 'cw-part' + (shut ? ' shut' : ''), style: { '--hue': ALL.includes(who) ? color(who) : 'var(--accent)' } },
                 h('header', { class: 'cw-part-head', onclick: event => { if (event.target.closest('button')) return; folded[id] = !shut; saveSoon(); fill(win); } },
                     ALL.includes(who) ? sigil(who, 'xs') : null, h('strong', null, ALL.includes(who) ? label(who) : who), h('span', { class: 'hint' }, '#' + id), h('span', { class: 'grow' }),
-                    h('button', { class: 'tiny-btn', title: '把这条回答拆成单独的窗口', onclick: () => addWindow({ kind: 'message', ref: id }, [win.x + win.w + 28, win.y + n * 46]) }, '拆出'),
+                    h('button', { class: 'tiny-btn', title: t('把这条回答拆成单独的窗口'), onclick: () => addWindow({ kind: 'message', ref: id }, [win.x + win.w + 28, win.y + n * 46]) }, t('拆出')),
                     h('span', { class: 'cw-chev' }, icon(ICONS.chevron, 13))),
-                shut ? null : h('div', { class: 'cw-part-body' }, canvasApi.renderMessage(id) || h('p', { class: 'hint' }, '这条回答不在当前加载的历史里。')));
+                shut ? null : h('div', { class: 'cw-part-body' }, canvasApi.renderMessage(id) || h('p', { class: 'hint' }, t('这条回答不在当前加载的历史里。'))));
         };
         const all = ids.every(id => folded[id]);
         body.replaceChildren(
-            h('div', { class: 'cw-turn-q' }, canvasApi.renderMessage(win.ref) || h('p', { class: 'hint' }, '提问不在当前加载的历史里。')),
-            h('div', { class: 'cw-turn-bar' }, h('span', { class: 'hint' }, `${ids.length} 个回答`), h('span', { class: 'grow' }),
-                h('button', { class: 'tiny-btn', onclick: () => { ids.forEach(id => { folded[id] = !all; }); saveSoon(); fill(win); } }, all ? '全部展开' : '全部折叠'),
-                h('button', { class: 'tiny-btn', onclick: () => copyTurn(win.ref) }, '复制本轮')),
+            h('div', { class: 'cw-turn-q' }, canvasApi.renderMessage(win.ref) || h('p', { class: 'hint' }, t('提问不在当前加载的历史里。'))),
+            h('div', { class: 'cw-turn-bar' }, h('span', { class: 'hint' }, t('{0} 个回答', ids.length)), h('span', { class: 'grow' }),
+                h('button', { class: 'tiny-btn', onclick: () => { ids.forEach(id => { folded[id] = !all; }); saveSoon(); fill(win); } }, all ? t('全部展开') : t('全部折叠')),
+                h('button', { class: 'tiny-btn', onclick: () => copyTurn(win.ref) }, t('复制本轮'))),
             ...ids.map(part));
         body.scrollTop = keep;
     } else if (win.kind === 'message') {
         const el = canvasApi.renderMessage(win.ref);
-        body.replaceChildren(el || h('p', { class: 'hint' }, '这条消息不在当前加载的历史里。'));
+        body.replaceChildren(el || h('p', { class: 'hint' }, t('这条消息不在当前加载的历史里。')));
         const msg = S.msgs.get(win.ref);
         node.el.style.setProperty('--hue', msg && ALL.includes(msg.sender) ? color(msg.sender) : 'var(--accent)');
     } else if (win.kind === 'quote') {
         const msg = S.msgs.get(win.ref);
         node.el.style.setProperty('--hue', msg && ALL.includes(msg.sender) ? color(msg.sender) : 'var(--accent)');
-        body.replaceChildren(h('blockquote', { class: 'cw-quote' }, win.text), h('button', { class: 'tiny-btn', onclick: () => scrollToMessage(win.ref, 0) }, `在聊天中查看 #${win.ref}`));
+        body.replaceChildren(h('blockquote', { class: 'cw-quote' }, win.text), h('button', { class: 'tiny-btn', onclick: () => scrollToMessage(win.ref, 0) }, t('在聊天中查看 #{0}', win.ref)));
     } else if (win.kind === 'view') {
         if (!node.pane) { node.pane = canvasApi.addPane({ filter: win.ref || null, anchor: win.anchor || null }); body.replaceChildren(node.pane.el); }
         node.el.style.setProperty('--hue', win.ref ? color(win.ref) : 'var(--accent)');
     } else if (win.kind === 'note') {
-        if (!body.firstChild) body.append(h('textarea', { class: 'cw-note', placeholder: '在这里记下想法、待查的问题、对比结论…（只保存在这台电脑的浏览器里）', value: win.text || '',
+        if (!body.firstChild) body.append(h('textarea', { class: 'cw-note', placeholder: t('在这里记下想法、待查的问题、对比结论…（只保存在这台电脑的浏览器里）'), value: win.text || '',
             oninput: event => { win.text = event.target.value; saveSoon(); } }));
     } else if (win.kind === 'pdf') {
         const show = async () => {
-            body.replaceChildren(h('p', { class: 'hint' }, '正在渲染页面…'));
+            body.replaceChildren(h('p', { class: 'hint' }, t('正在渲染页面…')));
             try {
                 const address = win.item ? `/api/chat/rooms/${room.id}/library/${win.item}/page?page=${win.page || 1}` : `/api/chat/attachments/page?url=${encodeURIComponent(win.ref)}&page=${win.page || 1}`;
                 const response = await fetch(address, { headers: { 'X-Session-Token': TOKEN } });
-                if (!response.ok) throw new Error(win.page > 1 ? '没有这一页了。' : '这个文件无法渲染为页面。');
+                if (!response.ok) throw new Error(win.page > 1 ? t('没有这一页了。') : t('这个文件无法渲染为页面。'));
                 const step = delta => () => { win.page = Math.max(1, (win.page || 1) + delta); saveSoon(); fill(win); };
-                body.replaceChildren(h('div', { class: 'cw-pdf-bar' }, h('button', { class: 'tiny-btn', disabled: (win.page || 1) <= 1, onclick: step(-1) }, '上一页'), h('span', null, `第 ${win.page || 1} 页`), h('button', { class: 'tiny-btn', onclick: step(1) }, '下一页')),
-                    h('img', { class: 'cw-pdf', src: URL.createObjectURL(await response.blob()), alt: `${win.name || 'PDF'} 第 ${win.page || 1} 页`, draggable: false }));
-            } catch (e) { body.replaceChildren(h('p', { class: 'form-error' }, e.message), h('button', { class: 'tiny-btn', onclick: () => { win.page = Math.max(1, (win.page || 1) - 1); fill(win); } }, '返回上一页')); }
+                body.replaceChildren(h('div', { class: 'cw-pdf-bar' }, h('button', { class: 'tiny-btn', disabled: (win.page || 1) <= 1, onclick: step(-1) }, t('上一页')), h('span', null, t('第 {0} 页', win.page || 1)), h('button', { class: 'tiny-btn', onclick: step(1) }, t('下一页'))),
+                    h('img', { class: 'cw-pdf', src: URL.createObjectURL(await response.blob()), alt: t('{0} 第 {1} 页', win.name || 'PDF', win.page || 1), draggable: false }));
+            } catch (e) { body.replaceChildren(h('p', { class: 'form-error' }, e.message), h('button', { class: 'tiny-btn', onclick: () => { win.page = Math.max(1, (win.page || 1) - 1); fill(win); } }, t('返回上一页'))); }
         };
         show();
     } else if (win.kind === 'source') {
-        body.replaceChildren(h('p', { class: 'hint' }, '正在读取资料…'));
+        body.replaceChildren(h('p', { class: 'hint' }, t('正在读取资料…')));
         try {
             const item = (await loadLibrary(room)).find(i => i.id === win.ref);
-            body.replaceChildren(item ? sourceBody(item, room, { onchange: () => { fill(win); drawLinks(); } }) : h('p', { class: 'hint' }, '这份资料已经不在资料库里。'));
+            body.replaceChildren(item ? sourceBody(item, room, { onchange: () => { fill(win); drawLinks(); } }) : h('p', { class: 'hint' }, t('这份资料已经不在资料库里。')));
             if (item) { node.el.querySelector('.cw-title').replaceChildren(...titleOf(win)); node.el.style.setProperty('--hue', item.holders[0] ? color(item.holders[0]) : 'var(--accent)'); }
         } catch (e) { body.replaceChildren(h('p', { class: 'form-error' }, e.message)); }
         drawLinks();
@@ -154,17 +155,17 @@ function mount(win, fresh = false) {
     const button = (name, title, fn, cls = '') => h('button', { class: 'cw-btn ' + cls, title, 'aria-label': title, onclick: event => { event.stopPropagation(); fn(); } }, icon(ICONS[name], 13));
     const body = h('div', { class: 'cw-body' });
     const head = h('header', { class: 'cw-head' }, h('span', { class: 'cw-title' }),
-        button('pin', '固定位置：整理画布时不移动它', () => { win.pin = !win.pin; place(win); saveSoon(); }, 'pin'),
-        h('button', { class: 'cw-btn', title: '层级与更多', 'aria-label': '更多', onclick: event => { event.stopPropagation(); menu(Object.assign(event.currentTarget, { alignRight: true }), [
-            { label: '移到最上层', action: () => raise(win) },
-            { label: '移到最下层', action: () => { win.z = Math.min(...state.windows.map(w => w.z || 1)) - 1; place(win); saveSoon(); } },
-            { label: '恢复默认大小', action: () => { [win.w, win.h] = DEFAULT[win.kind] || [420, 320]; place(win, true); setTimeout(drawLinks, 430); saveSoon(); } },
-            win.kind === 'turn' ? { label: '复制本轮回答', icon: 'copy', action: () => copyTurn(win.ref) } : null,
-            (win.kind === 'message' || win.kind === 'quote' || win.kind === 'turn') ? { label: '在聊天中定位', icon: 'down', action: () => scrollToMessage(win.ref, 0) } : null]); } }, icon(ICONS.more, 13)),
-        button('expand', '放大到整个视野 / 还原', () => maximise(win)),
-        button('close', '从画布移除（不影响聊天内容）', () => remove(win)));
+        button('pin', t('固定位置：整理画布时不移动它'), () => { win.pin = !win.pin; place(win); saveSoon(); }, 'pin'),
+        h('button', { class: 'cw-btn', title: t('层级与更多'), 'aria-label': t('更多'), onclick: event => { event.stopPropagation(); menu(Object.assign(event.currentTarget, { alignRight: true }), [
+            { label: t('移到最上层'), action: () => raise(win) },
+            { label: t('移到最下层'), action: () => { win.z = Math.min(...state.windows.map(w => w.z || 1)) - 1; place(win); saveSoon(); } },
+            { label: t('恢复默认大小'), action: () => { [win.w, win.h] = DEFAULT[win.kind] || [420, 320]; place(win, true); setTimeout(drawLinks, 430); saveSoon(); } },
+            win.kind === 'turn' ? { label: t('复制本轮回答'), icon: 'copy', action: () => copyTurn(win.ref) } : null,
+            (win.kind === 'message' || win.kind === 'quote' || win.kind === 'turn') ? { label: t('在聊天中定位'), icon: 'down', action: () => scrollToMessage(win.ref, 0) } : null]); } }, icon(ICONS.more, 13)),
+        button('expand', t('放大到整个视野 / 还原'), () => maximise(win)),
+        button('close', t('从画布移除（不影响聊天内容）'), () => remove(win)));
     const el = h('section', { class: 'cw' + (fresh ? ' fresh' : ''), dataset: { kind: win.kind, id: win.id } }, head, body,
-        h('i', { class: 'cw-edge e', dataset: { edge: 'e' } }), h('i', { class: 'cw-edge s', dataset: { edge: 's' } }), h('i', { class: 'cw-edge w', dataset: { edge: 'w' } }), h('i', { class: 'cw-resize', title: '拖动调整大小', dataset: { edge: 'se' } }));
+        h('i', { class: 'cw-edge e', dataset: { edge: 'e' } }), h('i', { class: 'cw-edge s', dataset: { edge: 's' } }), h('i', { class: 'cw-edge w', dataset: { edge: 'w' } }), h('i', { class: 'cw-resize', title: t('拖动调整大小'), dataset: { edge: 'se' } }));
     nodes.set(win.id, { win, el, body });
     world.append(el);
     place(win);
@@ -271,15 +272,15 @@ function addMenu(anchor) {
     const pdfs = [];
     for (const msg of S.byChannel.get(channel) || []) for (const att of msg.attachments || []) if (/\.pdf$/i.test(att.name || att.url) && !pdfs.some(p => p.url === att.url)) pdfs.push(att);
     menu(anchor, [
-        { title: '放到画布上' },
-        { label: '一条笔记', icon: 'edit', action: () => addWindow({ kind: 'note', text: '' }) },
-        ...turnsOf(channel).slice(-6).reverse().map(q => ({ label: `整轮：${(q.text || '').replace(/\s+/g, ' ').slice(0, 22)}`, icon: 'users', hint: '提问和它的全部回答，作为一个窗口', action: () => addWindow({ kind: 'turn', ref: q.id }) })),
-        { label: '完整对话视图', icon: 'columns', hint: '一个独立滚动的阅读窗口', action: () => addWindow({ kind: 'view', ref: null }) },
-        ...IDS.map(id => ({ label: `${label(id)} 的回答`, hint: '只看这位参与者的回答，独立滚动', action: () => addWindow({ kind: 'view', ref: id }) })),
-        pdfs.length ? 'sep' : null, pdfs.length ? { title: 'PDF 页面' } : null,
+        { title: t('放到画布上') },
+        { label: t('一条笔记'), icon: 'edit', action: () => addWindow({ kind: 'note', text: '' }) },
+        ...turnsOf(channel).slice(-6).reverse().map(q => ({ label: t('整轮：{0}', (q.text || '').replace(/\s+/g, ' ').slice(0, 22)), icon: 'users', hint: t('提问和它的全部回答，作为一个窗口'), action: () => addWindow({ kind: 'turn', ref: q.id }) })),
+        { label: t('完整对话视图'), icon: 'columns', hint: t('一个独立滚动的阅读窗口'), action: () => addWindow({ kind: 'view', ref: null }) },
+        ...IDS.map(id => ({ label: t('{0} 的回答', label(id)), hint: t('只看这位参与者的回答，独立滚动'), action: () => addWindow({ kind: 'view', ref: id }) })),
+        pdfs.length ? 'sep' : null, pdfs.length ? { title: t('PDF 页面') } : null,
         ...pdfs.slice(-8).map(att => ({ label: att.name || 'PDF', icon: 'doc', action: () => addWindow({ kind: 'pdf', ref: att.url, name: att.name, page: 1 }) })),
-        'sep', { label: '资料库里的文献…', icon: 'book', hint: '打开房间的资料页，把条目拖到画布上', action: () => emit('panel', { tab: 'library' }) },
-        { node: h('p', { class: 'menu-help' }, '也可以直接从左边的聊天里拖：按住一条消息的标题栏拖过来，或选中一段文字拖过来。') },
+        'sep', { label: t('资料库里的文献…'), icon: 'book', hint: t('打开房间的资料页，把条目拖到画布上'), action: () => emit('panel', { tab: 'library' }) },
+        { node: h('p', { class: 'menu-help' }, t('也可以直接从左边的聊天里拖：按住一条消息的标题栏拖过来，或选中一段文字拖过来。')) },
     ]);
 }
 
@@ -294,16 +295,16 @@ export function mountCanvas(box, name) {
     world = h('div', { class: 'cv-world' });
     links = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); links.setAttribute('class', 'cv-links');
     world.append(links);
-    zoomLabel = h('button', { class: 'cv-zoom', title: '恢复 100%', onclick: () => { const r = root.getBoundingClientRect(); zoomAt(1 / state.k, r.width / 2, r.height / 2, true); } });
-    hint = h('div', { class: 'cv-hint' }, h('strong', null, '自由画布'), h('p', null, '把左边聊天里的回答拖到这里并排比较：按住消息的标题栏拖动，或选中一段文字拖过来。'),
-        h('p', null, '资料库的文献、PDF 的某一页和你自己的笔记也可以放上来。拖动空白处平移，Ctrl + 滚轮缩放。'));
+    zoomLabel = h('button', { class: 'cv-zoom', title: t('恢复 100%'), onclick: () => { const r = root.getBoundingClientRect(); zoomAt(1 / state.k, r.width / 2, r.height / 2, true); } });
+    hint = h('div', { class: 'cv-hint' }, h('strong', null, t('自由画布')), h('p', null, t('把左边聊天里的回答拖到这里并排比较：按住消息的标题栏拖动，或选中一段文字拖过来。')),
+        h('p', null, t('资料库的文献、PDF 的某一页和你自己的笔记也可以放上来。拖动空白处平移，Ctrl + 滚轮缩放。')));
     const tool = (name, title, fn, text) => h('button', { class: 'cv-tool', title, onclick: fn }, name ? icon(ICONS[name], 15) : null, text || null);
     const bar = h('div', { class: 'cv-bar' },
-        tool('plus', '添加笔记、对话视图、PDF 页面或资料', event => addMenu(event.currentTarget), '添加'),
+        tool('plus', t('添加笔记、对话视图、PDF 页面或资料'), event => addMenu(event.currentTarget), t('添加')),
         h('span', { class: 'cv-sep' }),
-        tool(null, '缩小', () => { const r = root.getBoundingClientRect(); zoomAt(1 / 1.2, r.width / 2, r.height / 2, true); }, '−'), zoomLabel,
-        tool(null, '放大', () => { const r = root.getBoundingClientRect(); zoomAt(1.2, r.width / 2, r.height / 2, true); }, '+'),
-        tool('eye', '看到全部窗口', fitAll, '全览'), tool('columns', '整理：把没有固定的窗口排整齐', tidy, '整理'));
+        tool(null, t('缩小'), () => { const r = root.getBoundingClientRect(); zoomAt(1 / 1.2, r.width / 2, r.height / 2, true); }, '−'), zoomLabel,
+        tool(null, t('放大'), () => { const r = root.getBoundingClientRect(); zoomAt(1.2, r.width / 2, r.height / 2, true); }, '+'),
+        tool('eye', t('看到全部窗口'), fitAll, t('全览')), tool('columns', t('整理：把没有固定的窗口排整齐'), tidy, t('整理')));
     root = h('div', { class: 'canvas', tabIndex: 0 }, world, hint, bar, h('div', { class: 'cv-drop' }));
     box.append(root);
     for (const win of state.windows) mount(win);
@@ -391,10 +392,10 @@ document.addEventListener('pointerdown', event => {
     const head = event.target.closest?.('#panes[data-mode=canvas] > .pane .msg > .byline, #panes[data-mode=canvas] > .pane .msg > .u-meta');
     let spec = null, name = '';
     const picked = !row && !bar && !head ? selectionAt(event) : null;
-    if (picked) { spec = { kind: 'quote', ref: Number(picked.msg.dataset.id), text: picked.text }; name = '引用 · ' + picked.text.slice(0, 28) + (picked.text.length > 28 ? '…' : ''); }
-    else if (bar) { spec = { kind: 'turn', ref: Number(bar.closest('.turn').dataset.q) }; name = `整轮讨论 · ${canvasApi.answers(spec.ref).length} 个回答`; }
-    else if (head) { const msg = head.closest('.msg'); spec = { kind: 'message', ref: Number(msg.dataset.id) }; name = `${ALL.includes(msg.dataset.author) ? label(msg.dataset.author) : '提问'} #${msg.dataset.id}`; }
-    else if (row) { const item = row.closest('.lib-item'); spec = { kind: 'source', ref: item.dataset.id }; name = row.querySelector('strong')?.textContent.slice(0, 40) || '资料'; }
+    if (picked) { spec = { kind: 'quote', ref: Number(picked.msg.dataset.id), text: picked.text }; name = t('引用 · ') + picked.text.slice(0, 28) + (picked.text.length > 28 ? '…' : ''); }
+    else if (bar) { spec = { kind: 'turn', ref: Number(bar.closest('.turn').dataset.q) }; name = t('整轮讨论 · {0} 个回答', canvasApi.answers(spec.ref).length); }
+    else if (head) { const msg = head.closest('.msg'); spec = { kind: 'message', ref: Number(msg.dataset.id) }; name = `${ALL.includes(msg.dataset.author) ? label(msg.dataset.author) : t('提问')} #${msg.dataset.id}`; }
+    else if (row) { const item = row.closest('.lib-item'); spec = { kind: 'source', ref: item.dataset.id }; name = row.querySelector('strong')?.textContent.slice(0, 40) || t('资料'); }
     if (spec) carry = { spec, name, x: event.clientX, y: event.clientY, ghost: null };
 }, true);
 function startCarry(x, y) {

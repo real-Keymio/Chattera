@@ -27,6 +27,9 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1 -NoStart
   with the listed tests; it must not touch core modules.
 - New model providers need no code: they are added in Settings.
 - Keep user-facing text honest: do not claim a capability that has not been verified, and keep uncertain values `UNKNOWN`.
-- User-facing text is Chinese first; code, comments and developer docs are English.
+- User-facing text exists in Chinese and English. Write the Chinese text in `t('…')` (browser) or `_('…')` / `N_('…')`
+  (server), add the English to `src/static/mc/i18n/en.json`, and run `pytest tests/test_i18n.py`: it lists any text
+  that is missing or not wrapped. Text sent to models (prompts, lens methods) is English. Code, comments and developer
+  docs are English.
 
 By contributing you agree that your contribution is licensed under the MIT License of this repository.

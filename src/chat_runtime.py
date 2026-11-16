@@ -10,6 +10,7 @@ from chat_rooms import RoomCatalog, ContextBuilder
 from chat_tasks import TaskManager
 from model_settings import API_TYPES
 from chat_secrets import redact
+from chattera_i18n import _
 
 
 class ChatRuntime:
@@ -71,7 +72,7 @@ class ChatRuntime:
                     result[model] = dict(available=any(self.tasks.capabilities(r['owners'].get(model,'legacy'))['available'] for r in self.rooms.list() if not r['archived']),
                         busy=any(value.get('busy') for name, value in result.items() if self.family(name) == 'antigravity') or
                              any(t['model']==model and t['state']=='running' for t in self.tasks.list()),
-                        label='Gemini', color=info.get('color', '#4285f4'), role='按房间选择后端')
+                        label='Gemini', color=info.get('color', '#4285f4'), role=_('按房间选择后端'))
                     continue
                 result[model] = dict(available=True, busy=any(t["model"] == model and t["state"] == "running"
                     for t in self.tasks.list()), label=self.labels.get(model, info.get("label", model)), color=info.get("color", "#888"), role="Research Chat")
@@ -200,7 +201,7 @@ class ChatRuntime:
             await notify('done', evidence_id=evidence_id, evidence_message_id=record['id'], counts=counts)
         except Exception as exc:
             await notify('failed', reason=type(exc).__name__)
-            self.app.store.add('system', '检索未完成（' + type(exc).__name__ + '），本轮回答没有附带检索证据。', msg_type='system', channel=channel)
+            self.app.store.add('system', _('检索未完成（') + type(exc).__name__ + _('），本轮回答没有附带检索证据。'), msg_type='system', channel=channel)
         start(evidence_id)
 
     def legacy_allowed(self, name, channel):
@@ -325,7 +326,7 @@ class ChatRuntime:
                 meta['targets'] = self.everyone()
             meta['targets'] = [self.family(t) for t in meta['targets']]
             for target in meta['targets']:
-                if target not in self.app.config['agents']: raise ValueError('这位参与者已不在列表中：' + str(target)[:40])
+                if target not in self.app.config['agents']: raise ValueError(_('这位参与者已不在列表中：') + str(target)[:40])
             event.update(meta)
             event['visibility'] = validate(self, event.get('channel', 'general'), meta, event.get('reply_to'))
             channel = event.get('channel', 'general')
@@ -354,11 +355,11 @@ class ChatRuntime:
                     raise ValueError('Invalid retrieval request')
                 if request.get('mode') == 'hybrid' and not (request.get('web') or request.get('scholar')): request['mode'] = 'independent'
                 if request.get('mode') == 'independent':
-                    if event['visibility'] != 'public': raise ValueError('私聊中不能让模型自行联网检索（私聊内容不会发给搜索服务）。可以改用共享检索并自己填写检索词。')
+                    if event['visibility'] != 'public': raise ValueError(_('私聊中不能让模型自行联网检索（私聊内容不会发给搜索服务）。可以改用共享检索并自己填写检索词。'))
                     event['evidence'] = {'mode': 'independent'}
                 elif not (request.get('web') or request.get('scholar')): event.pop('evidence')
                 elif event['visibility'] != 'public' and not request.get('query', '').strip():
-                    raise ValueError('私聊中使用检索时，请填写检索词（不会自动把私聊内容发给搜索服务）')
+                    raise ValueError(_('私聊中使用检索时，请填写检索词（不会自动把私聊内容发给搜索服务）'))
             lens = event.get('lens')
             if lens is not None:
                 known = self.registry.lenses()

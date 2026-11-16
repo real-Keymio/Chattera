@@ -11,6 +11,7 @@ import { evidenceCard, basisStrip, openMaterials } from './evidence.js';
 import { transition, skin } from './skin.js';
 import { mountCanvas, unmountCanvas, saveCanvas } from './canvas.js';
 import { wsGet, wsSet } from './workspace.js';
+import { t } from './i18n.js';
 
 const PAGE = 120;
 const host = () => document.getElementById('panes');
@@ -86,8 +87,8 @@ class Pane {
         this.head = h('div', { class: 'pane-head' });
         this.thumb = h('div', { class: 'score-thumb' });
         this.canvas = h('canvas');
-        this.score = h('div', { class: 'score', title: '整场讨论的缩略：每条消息一格，颜色是发言者。点击或拖动可跳转。' }, this.canvas, this.thumb);
-        this.jump = h('button', { class: 'pane-jump', hidden: true, onclick: () => this.toBottom(true) }, icon(ICONS.down, 14), h('span', null, '最新'));
+        this.score = h('div', { class: 'score', title: t('整场讨论的缩略：每条消息一格，颜色是发言者。点击或拖动可跳转。') }, this.canvas, this.thumb);
+        this.jump = h('button', { class: 'pane-jump', hidden: true, onclick: () => this.toBottom(true) }, icon(ICONS.down, 14), h('span', null, t('最新')));
         this.el = h('section', { class: 'pane', dataset: { index }, style: { viewTransitionName: 'pane-' + index } }, this.head, this.scroller, this.score, this.jump);
         if (this.filter) this.el.dataset.filter = this.filter;
         this.scroller.addEventListener('scroll', () => { this.onScroll(); captureSoon(); }, { passive: true });
@@ -113,7 +114,7 @@ class Pane {
         if (!away) this.unseen = 0;
         this.jump.hidden = !away;
         this.jump.classList.toggle('fresh', this.unseen > 0);
-        this.jump.lastChild.textContent = this.unseen ? `${this.unseen} 条新消息` : '最新';
+        this.jump.lastChild.textContent = this.unseen ? t('{0} 条新消息', this.unseen) : t('最新');
         this.moveThumb();
     }
     find(id) { return this.inner.querySelector(`[data-id="${id}"]`); }
@@ -175,25 +176,25 @@ class Pane {
 
     // ----- rendering -----
     renderHead() {
-        const chips = [h('button', { class: 'focus-chip' + (this.filter ? '' : ' active'), title: '显示完整讨论', onclick: () => this.setFilter(null) }, '全部'),
+        const chips = [h('button', { class: 'focus-chip' + (this.filter ? '' : ' active'), title: t('显示完整讨论'), onclick: () => this.setFilter(null) }, t('全部')),
             ...IDS.map(id => h('button', { class: 'focus-chip' + (this.filter === id ? ' active' : ''), style: { '--hue': color(id) },
-                title: `聚焦 ${label(id)}：其他模型的回答收成一行，并定位到当前问题下它的回答`, onclick: () => this.setFilter(this.filter === id ? null : id) }, sigil(id, 'xs')))];
+                title: t('聚焦 {0}：其他模型的回答收成一行，并定位到当前问题下它的回答', label(id)), onclick: () => this.setFilter(this.filter === id ? null : id) }, sigil(id, 'xs')))];
         this.head.replaceChildren(...[h('span', { class: 'pane-tag' }, 'ABC'[this.index] || this.index + 1), h('div', { class: 'focus-chips' }, chips),
-            this.filter ? h('span', null, `聚焦 ${label(this.filter)}`) : null, h('span', { class: 'grow' }),
-            h('button', { class: 'icon-btn tiny', title: '跳到某个提问', onclick: event => this.questionMenu(event.currentTarget) }, icon(ICONS.history, 15)),
-            h('button', { class: 'icon-btn tiny' + (this.locked ? ' on' : ''), title: this.locked ? '已固定阅读位置：新消息到来时这一栏不滚动。点击取消' : '固定阅读位置：新消息到来时这一栏不滚动',
+            this.filter ? h('span', null, t('聚焦 {0}', label(this.filter))) : null, h('span', { class: 'grow' }),
+            h('button', { class: 'icon-btn tiny', title: t('跳到某个提问'), onclick: event => this.questionMenu(event.currentTarget) }, icon(ICONS.history, 15)),
+            h('button', { class: 'icon-btn tiny' + (this.locked ? ' on' : ''), title: this.locked ? t('已固定阅读位置：新消息到来时这一栏不滚动。点击取消') : t('固定阅读位置：新消息到来时这一栏不滚动'),
                 onclick: () => { this.locked = !this.locked; this.renderHead(); } }, icon(ICONS.pin, 14)),
             panes.length > 1 && !this.floating && host().dataset.mode !== 'canvas' ? h('button', { class: 'icon-btn tiny' + (host().dataset.zoom === String(this.index) ? ' on' : ''),
-                title: host().dataset.zoom === String(this.index) ? '还原多栏' : '最大化这一栏（其他栏保留各自的位置）', onclick: () => toggleZoom(this.index) },
-                icon(ICONS.expand, 14), host().dataset.zoom === String(this.index) ? h('span', null, '还原') : null) : null,
-            panes.length > 1 && !this.floating && host().dataset.mode !== 'canvas' ? h('button', { class: 'icon-btn tiny', title: '关闭这个视口', onclick: () => closePane(this.index) }, icon(ICONS.close, 14)) : null].filter(Boolean));
+                title: host().dataset.zoom === String(this.index) ? t('还原多栏') : t('最大化这一栏（其他栏保留各自的位置）'), onclick: () => toggleZoom(this.index) },
+                icon(ICONS.expand, 14), host().dataset.zoom === String(this.index) ? h('span', null, t('还原')) : null) : null,
+            panes.length > 1 && !this.floating && host().dataset.mode !== 'canvas' ? h('button', { class: 'icon-btn tiny', title: t('关闭这个视口'), onclick: () => closePane(this.index) }, icon(ICONS.close, 14)) : null].filter(Boolean));
     }
     questionMenu(anchor) {
         const questions = displayMessages(S.active).filter(m => isChat(m) && !isAnswer(m) && !isShare(m)).slice(-40).reverse();
-        menu(Object.assign(anchor, { alignRight: true }), questions.length ? [{ title: '跳到提问' }, ...questions.map(q => ({
-            label: (q.text || '（附件）').replace(/\s+/g, ' ').slice(0, 34), note: fmtTime(q.timestamp),
+        menu(Object.assign(anchor, { alignRight: true }), questions.length ? [{ title: t('跳到提问') }, ...questions.map(q => ({
+            label: (q.text || t('（附件）')).replace(/\s+/g, ' ').slice(0, 34), note: fmtTime(q.timestamp),
             action: () => { const answer = this.filter ? answersTo(q.id).find(m => authorOf(m) === this.filter) : null; this.scrollTo(answer?.id ?? q.id, { block: 'start' }); } }))]
-            : [{ title: '这个聊天还没有提问' }]);
+            : [{ title: t('这个聊天还没有提问') }]);
     }
 
     render({ keep = false, restore = false, swap = false } = {}) {
@@ -202,11 +203,11 @@ class Pane {
         box.replaceChildren();
         box.classList.remove('swap');
         this.renderHead();
-        if (!room) { box.append(hero('开始一段新的讨论', '点击左侧“新聊天”，选择参与者，输入问题或拖入资料。')); this.renderPending(); return; }
+        if (!room) { box.append(hero(t('开始一段新的讨论'), t('点击左侧“新聊天”，选择参与者，输入问题或拖入资料。'))); this.renderPending(); return; }
         const list = displayMessages(S.active);
         const start = Math.max(0, list.length - this.shown);
-        if (start > 0) box.append(h('button', { class: 'load-more', onclick: () => { this.shown += PAGE; this.render({ keep: true }); } }, `显示更早的 ${Math.min(PAGE, start)} 条（还有 ${start} 条）`));
-        if (!list.length) box.append(S.historyReady ? starter() : hero(room.name, '正在加载历史…'));
+        if (start > 0) box.append(h('button', { class: 'load-more', onclick: () => { this.shown += PAGE; this.render({ keep: true }); } }, t('显示更早的 {0} 条（还有 {1} 条）', Math.min(PAGE, start), start)));
+        if (!list.length) box.append(S.historyReady ? starter() : hero(room.name, t('正在加载历史…')));
         let day = null;
         for (let i = start; i < list.length; i++) {
             const msg = list[i], name = fmtDay(msg.timestamp);
@@ -253,15 +254,15 @@ class Pane {
         if (answers.length < 2) return;
         const question = Number(turn.dataset.q);
         const allFolded = answers.every(a => a.classList.contains('folded'));
-        head.append(...[h('span', { class: 'turn-count' }, `${answers.length} 个回答`),
-            h('div', { class: 'turn-jump' }, answers.map(a => h('button', { class: 'turn-chip', style: { '--hue': color(a.dataset.author) }, title: `跳到 ${label(a.dataset.author)} 的回答`,
+        head.append(...[h('span', { class: 'turn-count' }, t('{0} 个回答', answers.length)),
+            h('div', { class: 'turn-jump' }, answers.map(a => h('button', { class: 'turn-chip', style: { '--hue': color(a.dataset.author) }, title: t('跳到 {0} 的回答', label(a.dataset.author)),
                 onclick: () => { a.classList.remove('folded', 'stub'); a.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }, sigil(a.dataset.author, 'xs'), label(a.dataset.author)))),
-            !this.find(question) && S.msgs.get(question) ? h('button', { class: 'link', onclick: () => this.scrollTo(question) }, '查看对应提问') : null,
+            !this.find(question) && S.msgs.get(question) ? h('button', { class: 'link', onclick: () => this.scrollTo(question) }, t('查看对应提问')) : null,
             h('span', { class: 'grow' }),
-            h('button', { class: 'turn-compare', title: '复制这一轮的问题和所有已完成的回答（Markdown，来自原始消息，不受折叠影响）', onclick: () => copyTurn(question) }, icon(ICONS.copy, 14), '复制本轮'),
-            h('button', { class: 'turn-compare', title: '把这一整轮放到画布上（在画布模式下也可以按住这一行拖过去）', onclick: () => { setMode('canvas'); setTimeout(() => emit('canvas-add', { kind: 'turn', ref: question }), 420); } }, icon(ICONS.canvas, 14), '放到画布'),
-            h('button', { class: 'turn-compare', title: '打开并排视口，每栏定位到一个模型对这个问题的回答', onclick: () => compareTurn(question) }, icon(ICONS.columns, 14), '并排对照'),
-            h('button', { class: 'turn-fold', onclick: () => { answers.forEach(a => setFold(a, !allFolded)); this.turnHead(turn); } }, allFolded ? '全部展开' : '全部折叠')].filter(Boolean));
+            h('button', { class: 'turn-compare', title: t('复制这一轮的问题和所有已完成的回答（Markdown，来自原始消息，不受折叠影响）'), onclick: () => copyTurn(question) }, icon(ICONS.copy, 14), t('复制本轮')),
+            h('button', { class: 'turn-compare', title: t('把这一整轮放到画布上（在画布模式下也可以按住这一行拖过去）'), onclick: () => { setMode('canvas'); setTimeout(() => emit('canvas-add', { kind: 'turn', ref: question }), 420); } }, icon(ICONS.canvas, 14), t('放到画布')),
+            h('button', { class: 'turn-compare', title: t('打开并排视口，每栏定位到一个模型对这个问题的回答'), onclick: () => compareTurn(question) }, icon(ICONS.columns, 14), t('并排对照')),
+            h('button', { class: 'turn-fold', onclick: () => { answers.forEach(a => setFold(a, !allFolded)); this.turnHead(turn); } }, allFolded ? t('全部展开') : t('全部折叠'))].filter(Boolean));
     }
 
     append(msg) {
@@ -292,8 +293,8 @@ class Pane {
             if (!box) continue;
             box.append(h('div', { class: 'msg-note ' + (task.state === 'failed' ? 'error' : 'muted'), style: { '--hue': color(task.identity) } },
                 sigil(task.identity, 'xs'), h('span', null, h('strong', null, label(task.identity)), ` ${STATE[task.state]}`,
-                    task.state === 'failed' && task.reason ? '：' + friendlyReason(task.reason) : ''),
-                h('button', { class: 'link', onclick: () => emit('panel', { tab: 'calls', task: task.task_id }) }, '详情')));
+                    task.state === 'failed' && task.reason ? t('：') + friendlyReason(task.reason) : ''),
+                h('button', { class: 'link', onclick: () => emit('panel', { tab: 'calls', task: task.task_id }) }, t('详情'))));
         }
     }
 
@@ -303,18 +304,18 @@ class Pane {
         for (const data of S.retrieving.values()) {
             if (data.channel !== S.active) continue;
             grid.append(h('div', { class: 'pending search', dataset: { state: 'writing' } }, icon(ICONS.search, 16),
-                h('span', { class: 'who' }, '共享检索'), h('span', { class: 'pending-state' }, [data.request?.web ? '网页' : null, data.request?.scholar ? '学术文献' : null].filter(Boolean).join(' + ') + ' · 检索一次，所有回答者共用'),
+                h('span', { class: 'who' }, t('共享检索')), h('span', { class: 'pending-state' }, [data.request?.web ? t('网页') : null, data.request?.scholar ? t('学术文献') : null].filter(Boolean).join(' + ') + t(' · 检索一次，所有回答者共用')),
                 wave()));
         }
         for (const task of room ? runningTasks(S.active) : []) {
             const state = task.output_started_at ? 'writing' : 'thinking';
             grid.append(h('div', { class: 'pending', dataset: { state }, style: { '--hue': color(task.identity) } },
                 sigil(task.identity), h('span', { class: 'who' }, label(task.identity)),
-                h('span', { class: 'pending-state' }, state !== 'writing' && task.activity ? (task.activity.kind === 'read' ? '正在读 ' + (task.activity.text || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 46) : '正在搜索：' + (task.activity.text || '').slice(0, 46))
-                    : task.regenerated_from != null ? '正在重新生成' : state === 'writing' ? '正在写回答' : task.search && task.search.path !== 'none' ? '正在思考，可联网' : '正在思考'),
+                h('span', { class: 'pending-state' }, state !== 'writing' && task.activity ? (task.activity.kind === 'read' ? t('正在读 ') + (task.activity.text || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 46) : t('正在搜索：') + (task.activity.text || '').slice(0, 46))
+                    : task.regenerated_from != null ? t('正在重新生成') : state === 'writing' ? t('正在写回答') : task.search && task.search.path !== 'none' ? t('正在思考，可联网') : t('正在思考')),
                 h('span', { class: 'elapsed', dataset: { since: task.created_at || Date.now() / 1000 } }),
-                task.independent_mode ? badge('独立', 'indep') : null, h('span', { class: 'grow' }),
-                h('button', { class: 'icon-btn tiny', title: `停止 ${label(task.identity)}`, onclick: () => stopTask(room, task.identity) }, icon(ICONS.stop, 11)), wave()));
+                task.independent_mode ? badge(t('独立'), 'indep') : null, h('span', { class: 'grow' }),
+                h('button', { class: 'icon-btn tiny', title: t('停止 {0}', label(task.identity)), onclick: () => stopTask(room, task.identity) }, icon(ICONS.stop, 11)), wave()));
         }
         this.pending.replaceChildren(...(grid.children.length ? [grid] : []));
         tick();
@@ -371,7 +372,7 @@ class Pane {
 
 // ---------- pane layout ----------
 function splitter(index) {
-    const el = h('div', { class: 'splitter', title: '拖动调整列宽；双击恢复等宽' });
+    const el = h('div', { class: 'splitter', title: t('拖动调整列宽；双击恢复等宽') });
     el.addEventListener('pointerdown', event => {
         const left = panes[index - 1], right = panes[index];
         const total = left.el.offsetWidth + right.el.offsetWidth, grow = (Number(left.el.style.flexGrow) || 1) + (Number(right.el.style.flexGrow) || 1);
@@ -390,7 +391,7 @@ function splitter(index) {
 
 /** Between the two rows of a 4-, 5- or 6-pane arrangement: drag to give one row more height. */
 function rowSplitter(layout) {
-    const el = h('div', { class: 'row-splitter', title: '拖动调整上下两排的高度；双击恢复等高' });
+    const el = h('div', { class: 'row-splitter', title: t('拖动调整上下两排的高度；双击恢复等高') });
     el.addEventListener('pointerdown', event => {
         const [top, bottom] = [el.previousElementSibling, el.nextElementSibling], total = top.offsetHeight + bottom.offsetHeight, startY = event.clientY, startTop = top.offsetHeight;
         el.setPointerCapture(event.pointerId); el.classList.add('drag');
@@ -427,7 +428,7 @@ function build({ swap = false } = {}) {
     if (canvasMode) {
         // The chat stays docked on the left; the canvas takes the rest. Both are the same room.
         panes[0].el.style.flex = `0 0 ${Math.round(Math.max(.22, Math.min(.6, layout.dockWidth || .36)) * 100)}%`;
-        const grip = h('div', { class: 'splitter', title: '拖动调整聊天与画布的宽度' });
+        const grip = h('div', { class: 'splitter', title: t('拖动调整聊天与画布的宽度') });
         grip.addEventListener('pointerdown', event => {
             grip.setPointerCapture(event.pointerId);
             const move = e => { const r = box.getBoundingClientRect(); layout.dockWidth = Math.max(.22, Math.min(.6, (e.clientX - r.left) / r.width)); panes[0].el.style.flex = `0 0 ${Math.round(layout.dockWidth * 100)}%`; };
@@ -444,7 +445,7 @@ function build({ swap = false } = {}) {
 export const paneCount = () => panes.length;
 export function setPaneCount(count) {
     count = Math.max(1, Math.min(MAX_TILES, count));
-    if (fit(count) !== count) { toast(`窗口现在放不下 ${count} 个视口，已改为 ${fit(count)} 个。`); count = fit(count); }
+    if (fit(count) !== count) { toast(t('窗口现在放不下 {0} 个视口，已改为 {1} 个。', count, fit(count))); count = fit(count); }
     if (count === panes.length && layoutOf(S.active).mode !== 'canvas') return;
     capture();
     const layout = layoutOf(S.active);
@@ -469,23 +470,23 @@ export function setMode(mode) {
 export const paneMode = () => layoutOf(S.active).mode || 'tile';
 /** One round as Markdown, from the stored messages: the question and every completed answer with who wrote it and on which model. */
 export function turnMarkdown(question) {
-    const asked = S.msgs.get(question), lines = [`## 提问 #${question}`, '', asked?.text || '', ''];
+    const asked = S.msgs.get(question), lines = [t('## 提问 #{0}', question), '', asked?.text || '', ''];
     for (const answer of answersTo(question)) {
         const task = S.tasks.get(answer.metadata?.task_id || answer.metadata?.source_task_id), who = authorOf(answer);
         const model = task?.actual_model && task.actual_model !== 'UNKNOWN' ? task.actual_model : task?.requested_model;
-        const notes = [`回应提问 #${question}`];
-        if (answer.reply_to != null && answer.reply_to !== question) notes.push(`引用 #${answer.reply_to}`);
-        if (task?.search && task.search.path !== 'none') notes.push(`联网：${task.search.label || task.search.path}，搜索 ${task.search_summary?.searches || 0} 次、读取 ${task.search_summary?.pages || 0} 页`);
-        if (task?.evidence_id) notes.push('使用了共享检索资料');
+        const notes = [t('回应提问 #{0}', question)];
+        if (answer.reply_to != null && answer.reply_to !== question) notes.push(t('引用 #{0}', answer.reply_to));
+        if (task?.search && task.search.path !== 'none') notes.push(t('联网：{0}，搜索 {1} 次、读取 {2} 页', task.search.label || task.search.path, task.search_summary?.searches || 0, task.search_summary?.pages || 0));
+        if (task?.evidence_id) notes.push(t('使用了共享检索资料'));
         if (audienceOf(answer) !== 'public') notes.push(audienceText(audienceOf(answer)));
-        lines.push(`## ${label(who)}${model && model !== 'UNKNOWN' ? `（${model}）` : ''} · 回答 #${answer.id}`, '', answer.text || '', '', `> ${notes.join('；')}`, '');
+        lines.push(t('## {0}{1} · 回答 #{2}', label(who), model && model !== 'UNKNOWN' ? t('（{0}）', model) : '', answer.id), '', answer.text || '', '', `> ${notes.join(t('；'))}`, '');
     }
     return lines.join('\n').trim() + '\n';
 }
 export async function copyTurn(question) {
     const text = turnMarkdown(question);
-    try { await navigator.clipboard.writeText(text); toast(`已复制本轮：1 个提问、${answersTo(question).length} 个回答`); }
-    catch (e) { const area = h('textarea', { value: text, style: { position: 'fixed', opacity: 0 } }); document.body.append(area); area.select(); document.execCommand('copy'); area.remove(); toast('已复制本轮'); }
+    try { await navigator.clipboard.writeText(text); toast(t('已复制本轮：1 个提问、{0} 个回答', answersTo(question).length)); }
+    catch (e) { const area = h('textarea', { value: text, style: { position: 'fixed', opacity: 0 } }); document.body.append(area); area.select(); document.execCommand('copy'); area.remove(); toast(t('已复制本轮')); }
 }
 /** Maximise one pane over the others, or go back. Every pane keeps its own reading position, including the one that grows. */
 function toggleZoom(index, land) {
@@ -514,14 +515,14 @@ function closePane(index) {
 export function compareTurn(question) {
     const authors = [...new Set(answersTo(question).map(authorOf))];
     const count = fit(Math.min(authors.length, MAX_TILES));
-    if (count < 2) { toast(authors.length < 2 ? '这个问题只有一个回答。' : '窗口太窄，放不下并排视口。'); return; }
+    if (count < 2) { toast(authors.length < 2 ? t('这个问题只有一个回答。') : t('窗口太窄，放不下并排视口。')); return; }
     const layout = layoutOf(S.active);
     layout.mode = 'tile';
     layout.count = count; layout.widths = Array(count).fill(1);
     layout.views = authors.slice(0, count).map(author => ({ filter: author, anchor: { id: answersTo(question).find(m => authorOf(m) === author).id, offset: 6 } }));
     wsSet('layout', S.active, layout);
     transition(() => build());
-    if (authors.length > count) toast(`共有 ${authors.length} 个回答，当前显示 ${count} 栏；在栏顶点选其他参与者可以换成它的回答。`);
+    if (authors.length > count) toast(t('共有 {0} 个回答，当前显示 {1} 栏；在栏顶点选其他参与者可以换成它的回答。', authors.length, count));
 }
 
 const glyph = (rows, cls = '') => h('span', { class: 'lg ' + cls }, rows.map(n => h('span', null, Array.from({ length: n }, () => h('i')))));
@@ -529,11 +530,11 @@ function renderLayoutSeg() {
     const seg = document.getElementById('layout-seg'), canvasMode = paneMode() === 'canvas', tiles = panes.filter(p => !p.floating).length;
     const pick = event => {
         const grid = h('div', { class: 'lg-grid' }, Array.from({ length: MAX_TILES }, (_, i) => i + 1).map(n => h('button', { class: 'lg-opt' + (!canvasMode && n === tiles ? ' active' : ''), disabled: !allowed(n) && n > 1,
-            title: allowed(n) || n === 1 ? `${n} 个视口（Ctrl ${n}）` : '窗口现在放不下这种排列', onclick: () => { closeMenus(); setPaneCount(n); } }, glyph(ROWS[n]), h('em', null, n))),
-            h('button', { class: 'lg-opt wide' + (canvasMode ? ' active' : ''), title: '自由画布：聊天停靠在左边，右边自由摆放回答、整轮讨论、PDF 页面、资料和笔记', onclick: () => { closeMenus(); setMode('canvas'); } }, icon(ICONS.canvas, 18), h('em', null, '自由画布')));
-        menu(Object.assign(event.currentTarget, { alignRight: true }), [{ title: '阅读布局' }, { node: grid }]);
+            title: allowed(n) || n === 1 ? t('{0} 个视口（Ctrl {1}）', n, n) : t('窗口现在放不下这种排列'), onclick: () => { closeMenus(); setPaneCount(n); } }, glyph(ROWS[n]), h('em', null, n))),
+            h('button', { class: 'lg-opt wide' + (canvasMode ? ' active' : ''), title: t('自由画布：聊天停靠在左边，右边自由摆放回答、整轮讨论、PDF 页面、资料和笔记'), onclick: () => { closeMenus(); setMode('canvas'); } }, icon(ICONS.canvas, 18), h('em', null, t('自由画布'))));
+        menu(Object.assign(event.currentTarget, { alignRight: true }), [{ title: t('阅读布局') }, { node: grid }]);
     };
-    seg.replaceChildren(h('button', { class: 'lg-btn', title: '阅读布局：1–6 个视口或自由画布', 'aria-haspopup': 'menu', onclick: pick },
+    seg.replaceChildren(h('button', { class: 'lg-btn', title: t('阅读布局：1–6 个视口或自由画布'), 'aria-haspopup': 'menu', onclick: pick },
         canvasMode ? icon(ICONS.canvas, 16) : glyph(ROWS[tiles] || [1]), icon(ICONS.chevron, 12)));
 }
 
@@ -541,16 +542,16 @@ function renderLayoutSeg() {
 function hero(title, text) { return h('div', { class: 'hero' }, h('h2', null, title), h('p', null, text)); }
 function starter() {
     const ideas = [
-        ['精读一篇论文', '我上传了一篇论文。请先概括它的研究问题、方法和主要结论，再指出你认为最薄弱的一环。'],
-        ['评审实验设计', '下面是我的实验设计。请从变量控制、样本量、测量效度和可能的混淆因素几个方面提出具体意见：\n\n'],
-        ['查一查最新进展', '这个方向最近一两年有哪些值得注意的进展？请基于检索到的资料回答，并标注来源：\n\n'],
-        ['一起想点子', '我想探索一个还不成熟的想法，请先帮我把它讲清楚，再提出三个值得追问的方向：\n\n'],
+        [t('精读一篇论文'), t('我上传了一篇论文。请先概括它的研究问题、方法和主要结论，再指出你认为最薄弱的一环。')],
+        [t('评审实验设计'), t('下面是我的实验设计。请从变量控制、样本量、测量效度和可能的混淆因素几个方面提出具体意见：\n\n')],
+        [t('查一查最新进展'), t('这个方向最近一两年有哪些值得注意的进展？请基于检索到的资料回答，并标注来源：\n\n'), true],
+        [t('一起想点子'), t('我想探索一个还不成熟的想法，请先帮我把它讲清楚，再提出三个值得追问的方向：\n\n')],
     ];
     return h('div', { class: 'hero' },
         h('div', { class: 'hero-orbit' }, IDS.map((id, i) => Object.assign(sigil(id, 'lg'), { style: `--hue:${color(id)};--i:${i * 4 / IDS.length}` }))),
-        h('h2', null, '今天想讨论什么？'),
-        h('p', null, '在下方选择参与者，直接输入问题；也可以拖入论文、图片或数据文件，或打开联网，让每位模型各自查资料。'),
-        h('div', { class: 'starters' }, ideas.map(([name, text]) => h('button', { class: 'starter', onclick: () => emit('compose', { text, search: name.startsWith('查') }) }, name))));
+        h('h2', null, t('今天想讨论什么？')),
+        h('p', null, t('在下方选择参与者，直接输入问题；也可以拖入论文、图片或数据文件，或打开联网，让每位模型各自查资料。')),
+        h('div', { class: 'starters' }, ideas.map(([name, text, search]) => h('button', { class: 'starter', onclick: () => emit('compose', { text, search: !!search }) }, name))));
 }
 function wave() { return h('span', { class: 'wave', 'aria-hidden': 'true' }, Array.from({ length: 22 }, (_, k) => h('i', { style: { '--k': (k * 7) % 11 } }))); }
 function setFold(el, value) {
@@ -558,23 +559,23 @@ function setFold(el, value) {
     const id = Number(el.dataset.id);
     value ? folded.add(id) : folded.delete(id);
     const button = el.querySelector('.fold');
-    if (button) { button.title = value ? '展开' : '折叠'; button.setAttribute('aria-expanded', String(!value)); }
+    if (button) { button.title = value ? t('展开') : t('折叠'); button.setAttribute('aria-expanded', String(!value)); }
 }
 function badge(text, kind = '', iconName = null, title = '') {
     return h('span', { class: 'badge ' + kind, title }, iconName ? icon(ICONS[iconName], 12) : null, text);
 }
 function stateBadges(msg, scope) {
     const meta = msg.metadata || {}, out = [];
-    if (scope !== 'public') out.push(badge(audienceText(scope), 'lock', 'lock', '只有你和列出的模型有权读取这条消息'));
+    if (scope !== 'public') out.push(badge(audienceText(scope), 'lock', 'lock', t('只有你和列出的模型有权读取这条消息')));
     if (meta.independent_group && scope !== 'public' && (meta.task_id || meta.source_task_id)) {
-        out.push(badge('独立回答 · 尚未公开', 'indep', null, '其他模型看不到这条回答；确认后可公开分享'));
-    } else if (meta.independent_mode) out.push(badge(meta.independent_mode === 'strict' ? '严格独立提问' : '独立提问', 'indep'));
-    if (meta.evidence) out.push(badge([meta.evidence.web ? '网页' : null, meta.evidence.scholar ? '学术' : null].filter(Boolean).join(' + ') + '检索', '', 'search', '这条提问请求了共享检索'));
-    if (meta.forked_from) out.push(badge('来自分支前的历史', '', 'branch', '这条消息是建立分支时从原聊天复制过来的'));
+        out.push(badge(t('独立回答 · 尚未公开'), 'indep', null, t('其他模型看不到这条回答；确认后可公开分享')));
+    } else if (meta.independent_mode) out.push(badge(meta.independent_mode === 'strict' ? t('严格独立提问') : t('独立提问'), 'indep'));
+    if (meta.evidence) out.push(badge([meta.evidence.web ? t('网页') : null, meta.evidence.scholar ? t('学术') : null].filter(Boolean).join(' + ') + t('检索'), '', 'search', t('这条提问请求了共享检索')));
+    if (meta.forked_from) out.push(badge(t('来自分支前的历史'), '', 'branch', t('这条消息是建立分支时从原聊天复制过来的')));
     if ((meta.version || 1) > 1 || meta.revision_event) {
-        const kind = meta.revision_event === 'edit' ? '已编辑' : meta.revision_event === 'restore' ? '已恢复旧版本'
-            : meta.regenerated_from !== undefined || meta.replaces_message_id != null ? '重新生成' : '新版本';
-        out.push(h('button', { class: 'badge version', title: '查看全部版本', onclick: () => versionsDialog(msg) }, icon(ICONS.history, 12), `${kind} · v${meta.version || 1}`));
+        const kind = meta.revision_event === 'edit' ? t('已编辑') : meta.revision_event === 'restore' ? t('已恢复旧版本')
+            : meta.regenerated_from !== undefined || meta.replaces_message_id != null ? t('重新生成') : t('新版本');
+        out.push(h('button', { class: 'badge version', title: t('查看全部版本'), onclick: () => versionsDialog(msg) }, icon(ICONS.history, 12), `${kind} · v${meta.version || 1}`));
     }
     return out;
 }
@@ -592,36 +593,36 @@ function renderMessage(msg, pane) {
     const notices = h('div', { class: 'msg-notices' });
 
     if (shared) {
-        const who = msg.sender === S.username ? '你' : msg.sender;
+        const who = msg.sender === S.username ? t('你') : msg.sender;
         el.append(h('div', { class: 'share-banner' }, icon(ICONS.share, 13),
-            h('span', null, `${who}公开分享了 ${ai ? label(author) + ' 的回答' : '一条私聊消息'}`),
-            prov?.original_message_id != null ? h('button', { class: 'link', onclick: () => pane.scrollTo(prov.original_message_id) }, `原消息 #${prov.original_message_id}`) : null,
-            prov?.human_edited ? badge('经人工编辑，非逐字原文', 'warn') : null,
-            !prov ? badge('旧记录：缺少来源信息', 'warn') : null, h('span', { class: 'grow' }), stamp));
+            h('span', null, t('{0}公开分享了 {1}', who, ai ? label(author) + t(' 的回答') : t('一条私聊消息'))),
+            prov?.original_message_id != null ? h('button', { class: 'link', onclick: () => pane.scrollTo(prov.original_message_id) }, t('原消息 #{0}', prov.original_message_id)) : null,
+            prov?.human_edited ? badge(t('经人工编辑，非逐字原文'), 'warn') : null,
+            !prov ? badge(t('旧记录：缺少来源信息'), 'warn') : null, h('span', { class: 'grow' }), stamp));
     }
     if (ai) {
         const task = S.tasks.get(meta.task_id || meta.source_task_id);
         const model = task ? (task.actual_model && task.actual_model !== 'UNKNOWN' ? task.actual_model : task.requested_model) : null;
         const preview = h('span', { class: 'preview' }, (msg.text || '').replace(/\s+/g, ' ').slice(0, 110));
-        const fold = h('button', { class: 'fold icon-btn tiny', title: '折叠', 'aria-expanded': 'true', onclick: event => { event.stopPropagation(); setFold(el, !el.classList.contains('folded')); const turn = el.closest('.turn'); if (turn) pane.turnHead(turn); } }, icon(ICONS.chevron, 14));
+        const fold = h('button', { class: 'fold icon-btn tiny', title: t('折叠'), 'aria-expanded': 'true', onclick: event => { event.stopPropagation(); setFold(el, !el.classList.contains('folded')); const turn = el.closest('.turn'); if (turn) pane.turnHead(turn); } }, icon(ICONS.chevron, 14));
         el.append(h('header', { class: 'byline' }, sigil(author), h('span', { class: 'who' }, label(author)),
             shared ? null : stamp,
-            !shared && model ? h('span', { class: 'model-tag', title: `这次回答实际使用的模型${meta.backend ? ' · 连接 ' + meta.backend : ''}` }, model) : null,
+            !shared && model ? h('span', { class: 'model-tag', title: t('这次回答实际使用的模型{0}', meta.backend ? t(' · 连接 ') + meta.backend : '') }, model) : null,
             stateBadges(msg, shared ? 'public' : scope), preview, h('span', { class: 'grow' }), acts, shared ? null : fold));
         if (msg.reply_to != null && shared) el.append(replyRef(msg, pane));
         el.append(body);
         if (atts) el.append(atts);
         if (meta.generated_from != null && S.replaced.has(meta.generated_from)) {
-            el.append(h('div', { class: 'msg-note warn' }, `这条回答针对的是提问的旧版本（#${meta.generated_from}），不是基于编辑后的内容生成。`));
+            el.append(h('div', { class: 'msg-note warn' }, t('这条回答针对的是提问的旧版本（#{0}），不是基于编辑后的内容生成。', meta.generated_from)));
         }
         if (!shared && (msg.text || '').length > 900) {
             el.classList.add('long');
             if (opened.has(msg.id)) el.classList.add('unclamp');
             const flip = h('button', { onclick: event => { event.stopPropagation(); opened.has(msg.id) ? opened.delete(msg.id) : opened.add(msg.id);
-                el.classList.toggle('unclamp', opened.has(msg.id)); flip.textContent = opened.has(msg.id) ? '收起' : '展开全文'; } }, opened.has(msg.id) ? '收起' : '展开全文');
-            el.append(h('div', { class: 'preview-bar' }, h('span', null, '缩略预览'), flip,
-                pane && !pane.floating && panes.length > 1 ? h('button', { title: '把这一栏放大到整个阅读区并定位到这条回答；点栏顶的“还原”回到多栏和原来的位置',
-                    onclick: event => { event.stopPropagation(); opened.add(msg.id); el.classList.add('unclamp'); flip.textContent = '收起'; if (host().dataset.zoom !== String(pane.index)) toggleZoom(pane.index, msg.id); } }, icon(ICONS.expand, 13), '放大阅读') : null));
+                el.classList.toggle('unclamp', opened.has(msg.id)); flip.textContent = opened.has(msg.id) ? t('收起') : t('展开全文'); } }, opened.has(msg.id) ? t('收起') : t('展开全文'));
+            el.append(h('div', { class: 'preview-bar' }, h('span', null, t('缩略预览')), flip,
+                pane && !pane.floating && panes.length > 1 ? h('button', { title: t('把这一栏放大到整个阅读区并定位到这条回答；点栏顶的“还原”回到多栏和原来的位置'),
+                    onclick: event => { event.stopPropagation(); opened.add(msg.id); el.classList.add('unclamp'); flip.textContent = t('收起'); if (host().dataset.zoom !== String(pane.index)) toggleZoom(pane.index, msg.id); } }, icon(ICONS.expand, 13), t('放大阅读')) : null));
         }
         const basis = shared ? null : basisStrip(msg, author);
         if (basis) el.append(basis);
@@ -635,7 +636,7 @@ function renderMessage(msg, pane) {
         el.append(body);
         if (atts) el.append(atts);
         el.append(h('div', { class: 'u-foot' },
-            targets.length ? h('span', { class: 'u-targets', title: '这条消息点名的回答者：' + targets.map(label).join('、') }, h('span', { class: 'arrow' }, '→'), targets.map(t => sigil(t, 'xs'))) : null, acts), notices);
+            targets.length ? h('span', { class: 'u-targets', title: t('这条消息点名的回答者：') + targets.map(label).join(t('、')) }, h('span', { class: 'arrow' }, '→'), targets.map(t => sigil(t, 'xs'))) : null, acts), notices);
     }
     return el;
 }
@@ -645,8 +646,8 @@ function replyRef(msg, pane) {
     const quote = msg.metadata?.quote_text;
     const who = parent ? (ALL.includes(family(parent.sender)) ? label(family(parent.sender)) : parent.sender) : `#${msg.reply_to}`;
     const text = quote || parent?.text || '';
-    return h('button', { class: 'reply-ref', title: '跳转到被引用的消息', onclick: () => pane.scrollTo(msg.reply_to) },
-        h('span', { class: 'reply-who' }, (quote ? '引用 ' : '回复 ') + who),
+    return h('button', { class: 'reply-ref', title: t('跳转到被引用的消息'), onclick: () => pane.scrollTo(msg.reply_to) },
+        h('span', { class: 'reply-who' }, (quote ? t('引用 ') : t('回复 ')) + who),
         h('span', { class: 'reply-text' }, text.length > 200 ? text.slice(0, 200) + '…' : text));
 }
 
@@ -654,11 +655,11 @@ function attachment(att, msg, author) {
     if (!validUrl(att)) return null;
     const context = { messageId: msg.id, sender: author, siblings: msg.attachments };
     if (isImage(att)) {
-        return h('button', { class: 'att-image', title: att.name || '图片', onclick: () => openAttachment(att, context) },
-            h('img', { src: att.url, alt: att.name || '图片', loading: 'lazy' }));
+        return h('button', { class: 'att-image', title: att.name || t('图片'), onclick: () => openAttachment(att, context) },
+            h('img', { src: att.url, alt: att.name || t('图片'), loading: 'lazy' }));
     }
-    return h('button', { class: 'att-file', title: '查看附件内容', onclick: () => openAttachment(att, context) },
-        fileGlyph(att), h('span', { class: 'att-name' }, att.name || '附件'), h('span', { class: 'att-size' }, fmtSize(att.size)));
+    return h('button', { class: 'att-file', title: t('查看附件内容'), onclick: () => openAttachment(att, context) },
+        fileGlyph(att), h('span', { class: 'att-name' }, att.name || t('附件')), h('span', { class: 'att-size' }, fmtSize(att.size)));
 }
 
 /** Text the user has selected inside one message of one pane. */
@@ -682,8 +683,8 @@ function askResponse(msg, author, responder, el, instruction) {
     const same = responder === author;
     emit('compose', {
         reply: { id: msg.id, sender: author, text: source || msg.text || '', quote: source, action: true },
-        text: instruction || (same ? `请就你的这条回答继续展开，重点说明还没有解决的问题。`
-            : `请回应 ${label(author)} 的这条回答：哪些你同意，哪些不同意，依据是什么？`),
+        text: instruction || (same ? t('请就你的这条回答继续展开，重点说明还没有解决的问题。')
+            : t('请回应 {0} 的这条回答：哪些你同意，哪些不同意，依据是什么？', label(author))),
         once: [responder],
     });
 }
@@ -692,31 +693,31 @@ function actions(msg, { ai, shared, scope, author, el, pane }) {
     const meta = msg.metadata || {}, room = activeRoom();
     const button = (name, title, fn) => h('button', { class: 'act', title, 'aria-label': title, onclick: event => { event.stopPropagation(); fn(event); } }, icon(ICONS[name], 15));
     const bar = h('div', { class: 'acts' });
-    if (scope !== 'public') bar.append(h('button', { class: 'act text', onclick: () => shareDialog(msg, author, ai) }, icon(ICONS.share, 14), '公开分享'));
+    if (scope !== 'public') bar.append(h('button', { class: 'act text', onclick: () => shareDialog(msg, author, ai) }, icon(ICONS.share, 14), t('公开分享')));
     if (ai) {
         const others = IDS.filter(id => id !== author && capsOf(room, id).caps?.available !== false && (scope === 'public' || scope.includes(id)));
-        if (others.length) bar.append(h('span', { class: 'respond-row' }, h('span', null, '请回应'),
-            others.map(id => h('button', { class: 'respond-chip', style: { '--hue': color(id) }, title: `让 ${label(id)} 回应这条回答（会带上引用并选好回答者，可直接发送或补充问题）`,
+        if (others.length) bar.append(h('span', { class: 'respond-row' }, h('span', null, t('请回应')),
+            others.map(id => h('button', { class: 'respond-chip', style: { '--hue': color(id) }, title: t('让 {0} 回应这条回答（会带上引用并选好回答者，可直接发送或补充问题）', label(id)),
                 onclick: event => { event.stopPropagation(); askResponse(msg, author, id, el); } }, sigil(id, 'xs')))));
     }
-    bar.append(button('copy', '复制', () => copyText(msg.text || '')));
-    bar.append(button('reply', '引用这条消息', () => emit('compose', { reply: { id: msg.id, sender: author, text: msg.text || '' } })));
-    if (ai && !shared && (meta.task_id || meta.source_task_id)) bar.append(button('redo', '重新生成', () => regenerate(msg, author)));
-    if (!ai) bar.append(button('edit', '编辑（保留旧版本）', () => editDialog(msg)));
-    bar.append(button('more', '更多', event => {
+    bar.append(button('copy', t('复制'), () => copyText(msg.text || '')));
+    bar.append(button('reply', t('引用这条消息'), () => emit('compose', { reply: { id: msg.id, sender: author, text: msg.text || '' } })));
+    if (ai && !shared && (meta.task_id || meta.source_task_id)) bar.append(button('redo', t('重新生成'), () => regenerate(msg, author)));
+    if (!ai) bar.append(button('edit', t('编辑（保留旧版本）'), () => editDialog(msg)));
+    bar.append(button('more', t('更多'), event => {
         const task = meta.task_id || meta.source_task_id;
         menu(Object.assign(event.currentTarget, { alignRight: true }), [
-            ...(ai && presets.length ? [{ title: '请模型回应（预填到输入框，不会自动发送）' },
-                ...presets.map(p => ({ label: p.label, hint: p.hint || '', action: () => usePreset(msg, author, p, el) })), 'sep'] : []),
-            ai && msg.reply_to != null && answersTo(msg.reply_to).length > 1 ? { label: '并排对照这个问题的回答', icon: 'columns', action: () => compareTurn(msg.reply_to) } : null,
-            task ? { label: '这次回答的依据', icon: 'doc', action: () => openMaterials(task, author) } : null,
-            scope === 'public' ? { label: '固定到房间背景', icon: 'pin', hint: '之后每次提问都会带上这段内容；选中一段文字可以只固定那一段', action: () => pinMessage(msg, el) } : null,
-            { label: '放到画布', icon: 'canvas', hint: '在自由画布上打开这条消息的视图，便于和其他内容并排比较', action: () => { setMode('canvas'); setTimeout(() => emit('canvas-add', { kind: 'message', ref: msg.id }), 420); } },
-            { label: '从这里建立分支', icon: 'branch', hint: '新建一个聊天，带上到这条消息为止的历史', action: () => forkFrom(msg) },
+            ...(ai && presets.length ? [{ title: t('请模型回应（预填到输入框，不会自动发送）') },
+                ...presets.map(p => ({ label: t(p.label), hint: p.hint ? t(p.hint) : '', action: () => usePreset(msg, author, p, el) })), 'sep'] : []),
+            ai && msg.reply_to != null && answersTo(msg.reply_to).length > 1 ? { label: t('并排对照这个问题的回答'), icon: 'columns', action: () => compareTurn(msg.reply_to) } : null,
+            task ? { label: t('这次回答的依据'), icon: 'doc', action: () => openMaterials(task, author) } : null,
+            scope === 'public' ? { label: t('固定到房间背景'), icon: 'pin', hint: t('之后每次提问都会带上这段内容；选中一段文字可以只固定那一段'), action: () => pinMessage(msg, el) } : null,
+            { label: t('放到画布'), icon: 'canvas', hint: t('在自由画布上打开这条消息的视图，便于和其他内容并排比较'), action: () => { setMode('canvas'); setTimeout(() => emit('canvas-add', { kind: 'message', ref: msg.id }), 420); } },
+            { label: t('从这里建立分支'), icon: 'branch', hint: t('新建一个聊天，带上到这条消息为止的历史'), action: () => forkFrom(msg) },
             'sep',
-            { label: '版本历史', icon: 'history', action: () => versionsDialog(msg) },
-            task ? { label: '调用记录', icon: 'info', action: () => emit('panel', { tab: 'calls', task }) } : null,
-            { label: `复制消息 ID（#${msg.id}）`, icon: 'copy', action: () => copyText(String(msg.id)) },
+            { label: t('版本历史'), icon: 'history', action: () => versionsDialog(msg) },
+            task ? { label: t('调用记录'), icon: 'info', action: () => emit('panel', { tab: 'calls', task }) } : null,
+            { label: t('复制消息 ID（#{0}）', msg.id), icon: 'copy', action: () => copyText(String(msg.id)) },
         ]);
     }));
     return bar;
@@ -728,9 +729,9 @@ function usePreset(msg, author, preset, el) {
     const values = { author: label(author), message_id: String(msg.id), quote: (source || msg.text || '').slice(0, 250) };
     emit('compose', {
         reply: { id: msg.id, sender: author, text: source || msg.text || '', quote: source, action: true },
-        text: preset.instruction.replace(/\{(author|message_id|quote)\}/g, (_, key) => values[key]),
+        text: t(preset.instruction).replace(/\{(author|message_id|quote)\}/g, (_, key) => values[key]),
         once: preset.target === 'author' ? [author] : null, search: preset.research ? 'scholar' : false,
-        hint: preset.target === 'author' ? '' : '请选择由哪些模型来回应，然后发送。',
+        hint: preset.target === 'author' ? '' : t('请选择由哪些模型来回应，然后发送。'),
     });
 }
 
@@ -738,56 +739,56 @@ async function pinMessage(msg, el) {
     const room = activeRoom(), quote = selectedQuote(el);
     try {
         await api(`/api/chat/rooms/${room.id}/pins`, { message_id: msg.id, text: quote?.quote || '' });
-        await refreshRooms(); toast('已固定到房间背景');
+        await refreshRooms(); toast(t('已固定到房间背景'));
     } catch (e) { toast(e.message, 'error', 7000); }
 }
 function forkFrom(msg) {
     const room = activeRoom();
-    promptDialog('从这条消息建立分支', (room.name.slice(0, 50) + ' · 分支').slice(0, 80), '建立分支', async name => {
+    promptDialog(t('从这条消息建立分支'), (room.name.slice(0, 50) + t(' · 分支')).slice(0, 80), t('建立分支'), async name => {
         const created = await api(`/api/chat/rooms/${room.id}/fork`, { message_id: msg.id, name });
-        await refreshRooms(); openRoom(created.channel); toast('已建立分支：这里的讨论不会影响原聊天');
-    }, { note: '新聊天会带上到这条消息为止的历史（各版本只保留当前生效的一版）、附件副本、固定内容和模型设置。原聊天不变。' });
+        await refreshRooms(); openRoom(created.channel); toast(t('已建立分支：这里的讨论不会影响原聊天'));
+    }, { note: t('新聊天会带上到这条消息为止的历史（各版本只保留当前生效的一版）、附件副本、固定内容和模型设置。原聊天不变。') });
 }
 
 // ---------- task status ----------
-const STATE = { failed: '没有回答', cancelled: '已停止' };
+const STATE = { failed: t('没有回答'), cancelled: t('已停止') };
 
 /** Turn a recorded failure into something actionable. The raw reason stays available under “调用记录”. */
 export function friendlyReason(reason = '') {
     const status = /API HTTP status (\d{3})/.exec(reason);
     if (status) {
         const code = +status[1], params = /provider-referenced parameters: (.+)$/.exec(reason);
-        const text = code === 401 || code === 403 ? '服务商拒绝了认证，请检查这个连接的 Key 是否有效、是否有权使用该模型'
-            : code === 404 ? '接口地址或模型 ID 不存在，请检查连接的地址和模型名称'
-            : code === 429 ? '被服务商限流，或账户额度不足' : code === 400 || code === 422 ? '请求被服务商拒绝，参数或模型不被接受'
-            : code >= 500 ? '服务商或中转网关出错，可稍后重试' : '服务商返回了错误';
-        return `${text}（HTTP ${code}${params ? '，涉及参数：' + params[1] : ''}）。`;
+        const text = code === 401 || code === 403 ? t('服务商拒绝了认证，请检查这个连接的 Key 是否有效、是否有权使用该模型')
+            : code === 404 ? t('接口地址或模型 ID 不存在，请检查连接的地址和模型名称')
+            : code === 429 ? t('被服务商限流，或账户额度不足') : code === 400 || code === 422 ? t('请求被服务商拒绝，参数或模型不被接受')
+            : code >= 500 ? t('服务商或中转网关出错，可稍后重试') : t('服务商返回了错误');
+        return t('{0}（HTTP {1}{2}）。', text, code, params ? t('，涉及参数：') + params[1] : '');
     }
     const stage = /stage=([^;]+); protocol=(\S+)/.exec(reason);
     if (stage) {
         const s = stage[1];
-        const text = s.startsWith('connect timeout') ? '连接服务商超时，没有建立连接' : s.startsWith('response timeout') ? '已连上服务商，但没有在限时内返回'
-            : s.startsWith('connect') ? '无法连接服务商（DNS、网络或 TLS）' : s.startsWith('transport') ? '传输过程中断'
-            : s.startsWith('response body') ? '服务商返回的内容不是 JSON，地址或协议可能不匹配' : '服务商返回的 JSON 与所选协议不符，协议设置可能不对';
-        return `${text}（协议 ${stage[2]}）。`;
+        const text = s.startsWith('connect timeout') ? t('连接服务商超时，没有建立连接') : s.startsWith('response timeout') ? t('已连上服务商，但没有在限时内返回')
+            : s.startsWith('connect') ? t('无法连接服务商（DNS、网络或 TLS）') : s.startsWith('transport') ? t('传输过程中断')
+            : s.startsWith('response body') ? t('服务商返回的内容不是 JSON，地址或协议可能不匹配') : t('服务商返回的 JSON 与所选协议不符，协议设置可能不对');
+        return t('{0}（协议 {1}）。', text, stage[2]);
     }
     const cli = /(\w+) CLI exit (-?\d+)/.exec(reason);
-    if (cli) return `${cli[1]} CLI 异常退出（代码 ${cli[2]}），没有写入回复。可能是订阅登录失效、模型 ID 不被接受或 CLI 已更新，可在终端里手动运行一次确认。`;
-    if (/API cumulative request cap/.test(reason)) return '被本机设置的 API 累计请求上限拦截（不是服务商余额不足）。';
-    if (/incomplete or unsupported stop state/.test(reason)) return '回答在完成前被截断（通常是达到了单次输出上限）。可在设置 → 模型与服务里调高这个连接的输出上限。';
-    if (/per-task request\/tool round limit|tool-call limit/.test(reason)) return '模型连续调用工具的次数达到上限，没有给出最终回答。可以重试，或把问题拆小。';
-    if (/API cancelled or total deadline|CLI total timeout|timed? ?out/i.test(reason)) return '超过了这次调用的总时限。可以重试、缩短输入，或在设置 → 模型与服务里调大超时。';
-    if (/server restart recovery/.test(reason)) return '服务重启时这次调用被中断，请重新提问。';
-    if (/does not support image/.test(reason)) return '这个连接不支持图片输入。';
-    if (/did not return a (successful|completed) final result|turn failed/.test(reason)) return 'CLI 运行结束但没有给出最终回答，可重试一次。';
-    if (/API transport or response schema failure/.test(reason)) return 'API 调用失败（网络传输或返回格式问题；这条较早的记录没有保存具体阶段）。';
+    if (cli) return t('{0} CLI 异常退出（代码 {1}），没有写入回复。可能是订阅登录失效、模型 ID 不被接受或 CLI 已更新，可在终端里手动运行一次确认。', cli[1], cli[2]);
+    if (/API cumulative request cap/.test(reason)) return t('被本机设置的 API 累计请求上限拦截（不是服务商余额不足）。');
+    if (/incomplete or unsupported stop state/.test(reason)) return t('回答在完成前被截断（通常是达到了单次输出上限）。可在设置 → 模型与服务里调高这个连接的输出上限。');
+    if (/per-task request\/tool round limit|tool-call limit/.test(reason)) return t('模型连续调用工具的次数达到上限，没有给出最终回答。可以重试，或把问题拆小。');
+    if (/API cancelled or total deadline|CLI total timeout|timed? ?out/i.test(reason)) return t('超过了这次调用的总时限。可以重试、缩短输入，或在设置 → 模型与服务里调大超时。');
+    if (/server restart recovery/.test(reason)) return t('服务重启时这次调用被中断，请重新提问。');
+    if (/does not support image/.test(reason)) return t('这个连接不支持图片输入。');
+    if (/did not return a (successful|completed) final result|turn failed/.test(reason)) return t('CLI 运行结束但没有给出最终回答，可重试一次。');
+    if (/API transport or response schema failure/.test(reason)) return t('API 调用失败（网络传输或返回格式问题；这条较早的记录没有保存具体阶段）。');
     return explain(reason);
 }
 
 function tick() {
     for (const el of document.querySelectorAll('.elapsed[data-since]')) {
         const seconds = Math.max(0, Math.round(Date.now() / 1000 - Number(el.dataset.since)));
-        el.textContent = seconds < 60 ? `${seconds} 秒` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+        el.textContent = seconds < 60 ? t('{0} 秒', seconds) : t('{0} 分 {1} 秒', Math.floor(seconds / 60), seconds % 60);
     }
 }
 export async function stopTask(room, model) {
@@ -797,75 +798,75 @@ export async function stopTask(room, model) {
 
 // ---------- message operations ----------
 function editDialog(msg) {
-    const input = h('textarea', { class: 'input area', value: msg.text || '', 'aria-label': '消息内容' });
+    const input = h('textarea', { class: 'input area', value: msg.text || '', 'aria-label': t('消息内容') });
     modal({
-        title: '编辑消息', wide: true,
-        body: [input, h('p', { class: 'hint' }, '保存后生成新版本，旧版本仍可查看和恢复。已有的模型回答仍然对应原提问，保存不会自动唤醒模型；需要新回答请再次发送提问。')],
-        actions: [{ label: '保存新版本', primary: true, action: () => messageOp(msg.id, 'edit', { text: input.value }) }],
+        title: t('编辑消息'), wide: true,
+        body: [input, h('p', { class: 'hint' }, t('保存后生成新版本，旧版本仍可查看和恢复。已有的模型回答仍然对应原提问，保存不会自动唤醒模型；需要新回答请再次发送提问。'))],
+        actions: [{ label: t('保存新版本'), primary: true, action: () => messageOp(msg.id, 'edit', { text: input.value }) }],
     });
     input.focus();
 }
 function shareDialog(msg, author, ai) {
-    const input = h('textarea', { class: 'input area', value: msg.text || '', 'aria-label': '将要公开的内容' });
+    const input = h('textarea', { class: 'input area', value: msg.text || '', 'aria-label': t('将要公开的内容') });
     modal({
-        title: '公开分享这条私有消息', wide: true,
+        title: t('公开分享这条私有消息'), wide: true,
         body: [
-            h('p', { class: 'modal-text' }, '原作者 ', ai ? [sigil(author, 'xs'), ' ', h('strong', null, label(author))] : h('strong', null, msg.sender), ` · 当前${audienceText(audienceOf(msg))}`),
+            h('p', { class: 'modal-text' }, t('原作者 '), ai ? [sigil(author, 'xs'), ' ', h('strong', null, label(author))] : h('strong', null, msg.sender), t(' · 当前{0}', audienceText(audienceOf(msg)))),
             input,
             h('ul', { class: 'hint list' },
-                h('li', null, '确认后会新增一条公开的“分享”消息，所有模型之后都可以读取；原私有消息及其可见范围不变。'),
-                h('li', null, '分享内容保留原作者身份，作为被引用的内容而不是你的新指令。如果你修改了文本，会标注“经人工编辑”。'),
-                h('li', null, '分享不会自动唤醒任何模型，也不会带上原消息的附件。')),
+                h('li', null, t('确认后会新增一条公开的“分享”消息，所有模型之后都可以读取；原私有消息及其可见范围不变。')),
+                h('li', null, t('分享内容保留原作者身份，作为被引用的内容而不是你的新指令。如果你修改了文本，会标注“经人工编辑”。')),
+                h('li', null, t('分享不会自动唤醒任何模型，也不会带上原消息的附件。'))),
         ],
-        actions: [{ label: '确认公开', primary: true, action: () => messageOp(msg.id, 'share', { confirm: true, text: input.value }) }],
+        actions: [{ label: t('确认公开'), primary: true, action: () => messageOp(msg.id, 'share', { confirm: true, text: input.value }) }],
     });
 }
 function regenerate(msg, author) {
-    confirmDialog('重新生成这条回答', `${label(author)} 将使用原提问时冻结的输入快照（含当时的检索资料与研究视角）和当时的模型设置重新回答，不会包含之后产生的消息或摘要。新回答会替换当前显示的版本，旧版本可在“版本历史”中查看和恢复。`,
-        '重新生成', () => messageOp(msg.id, 'regenerate'));
+    confirmDialog(t('重新生成这条回答'), t('{0} 将使用原提问时冻结的输入快照（含当时的检索资料与研究视角）和当时的模型设置重新回答，不会包含之后产生的消息或摘要。新回答会替换当前显示的版本，旧版本可在“版本历史”中查看和恢复。', label(author)),
+        t('重新生成'), () => messageOp(msg.id, 'regenerate'));
 }
 async function versionsDialog(msg) {
     let versions;
     try { versions = await messageOp(msg.id, 'versions'); } catch (e) { toast(e.message, 'error'); return; }
     const replaced = new Set(versions.map(v => v.metadata?.replaces_message_id).filter(v => v != null));
-    const dialog = modal({ title: `版本历史（共 ${versions.length} 个）`, wide: true, body: [] });
+    const dialog = modal({ title: t('版本历史（共 {0} 个）', versions.length), wide: true, body: [] });
     for (const version of [...versions].reverse()) {
         const current = !replaced.has(version.id);
         const event = version.metadata?.revision_event;
         dialog.body.append(h('section', { class: 'version' + (current ? ' current' : '') },
             h('div', { class: 'version-head' },
                 h('strong', null, `v${version.metadata?.version || 1}`), h('span', null, `#${version.id} · ${fmtTime(version.timestamp)}`),
-                event ? badge(event === 'edit' ? '人工编辑' : '恢复', '') : null,
-                current ? badge('当前生效', 'ok') : h('button', {
+                event ? badge(event === 'edit' ? t('人工编辑') : t('恢复'), '') : null,
+                current ? badge(t('当前生效'), 'ok') : h('button', {
                     class: 'btn small', onclick: async click => {
                         click.currentTarget.disabled = true;
-                        try { await messageOp(version.id, 'restore'); dialog.close(); toast('已恢复为新版本'); }
+                        try { await messageOp(version.id, 'restore'); dialog.close(); toast(t('已恢复为新版本')); }
                         catch (e) { dialog.error(e.message); click.currentTarget.disabled = false; }
                     },
-                }, '恢复此版本')),
+                }, t('恢复此版本'))),
             h('div', { class: 'version-text' }, version.text)));
     }
-    dialog.body.append(h('p', { class: 'hint' }, '恢复会追加一个新版本，不会删除任何历史版本，也不会重新调用模型。'));
+    dialog.body.append(h('p', { class: 'hint' }, t('恢复会追加一个新版本，不会删除任何历史版本，也不会重新调用模型。')));
 }
 
 // ---------- navigation ----------
 export function scrollToMessage(id, paneIndex = activePane) {
     const msg = S.msgs.get(Number(id));
-    if (!msg) { toast('这条消息不在已加载的历史中。'); return; }
+    if (!msg) { toast(t('这条消息不在已加载的历史中。')); return; }
     if (msg.channel !== S.active) return;
     panes[Math.min(paneIndex, panes.length - 1)]?.scrollTo(msg.id);
 }
 /** Latest answer of a participant, in the pane the user last touched. */
 export function jumpToLatest(id) {
     const answer = displayMessages(S.active).filter(m => isAnswer(m) && authorOf(m) === id).at(-1);
-    if (!answer) { toast(`${label(id)} 在这个聊天里还没有回答。`); return; }
+    if (!answer) { toast(t('{0} 在这个聊天里还没有回答。', label(id))); return; }
     scrollToMessage(answer.id);
 }
 export function focusParticipant(id) { panes[Math.min(activePane, panes.length - 1)]?.setFilter(id); }
 
 // ---------- selection quote ----------
 function setupSelectionQuote() {
-    const button = h('button', { class: 'quote-float', type: 'button', hidden: true }, icon(ICONS.reply, 14), '引用');
+    const button = h('button', { class: 'quote-float', type: 'button', hidden: true }, icon(ICONS.reply, 14), t('引用'));
     document.body.append(button);
     const position = () => {
         const selected = selectedQuote();
@@ -874,7 +875,7 @@ function setupSelectionQuote() {
         const rect = selected.range.getBoundingClientRect();
         if (rect.bottom <= 0 || rect.top >= window.innerHeight) { button.hidden = true; return; }
         button.disabled = selected.quote.length > 1500;
-        button.title = button.disabled ? '引用最多 1500 字，请缩短选区。' : '把选中内容引用到输入框（不会自动发送）';
+        button.title = button.disabled ? t('引用最多 1500 字，请缩短选区。') : t('把选中内容引用到输入框（不会自动发送）');
         const top = rect.top - button.offsetHeight - 8;
         button.style.top = (top >= 4 ? top : Math.min(rect.bottom + 8, window.innerHeight - button.offsetHeight - 4)) + 'px';
         button.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - button.offsetWidth - 4)) + 'px';

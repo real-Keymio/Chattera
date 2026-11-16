@@ -23,6 +23,7 @@ import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from chattera_i18n import _
 
 DEFAULT_LIMIT = 1 << 30   # 1 GiB of cache before the least recently used unkept files are removed
 LEVELS = ('metadata', 'abstract', 'page', 'fulltext')   # how much of the source has actually been obtained
@@ -260,7 +261,7 @@ class Library:
             except (ValueError, OSError) as exc:
                 info['unavailable'] = (info.get('unavailable', '') + ' ' + str(exc)[:200]).strip()
         if not text or len(text) < 400:
-            raise ValueError('没有取得可读的全文' + ('：' + info['unavailable'] if info.get('unavailable') else '（可能需要订阅，或页面无法直接读取）'))
+            raise ValueError(_('没有取得可读的全文') + (_('：') + info['unavailable'] if info.get('unavailable') else _('（可能需要订阅，或页面无法直接读取）')))
         info.update(text_sha=self._store(text.encode('utf-8'), 'txt', 'derived', info.get('url') or ''), characters=len(text),
                     sha256=original or hashlib.sha256(text.encode('utf-8')).hexdigest())
         def change(data):
@@ -335,8 +336,8 @@ class Library:
         with _lock:
             index = self.files()
             loose = sorted((r['last_used'], sha) for sha, r in index.items() if not r.get('kept'))
-            size, removed = sum(index[sha]['size'] for _, sha in loose), 0
-            for _, sha in loose:
+            size, removed = sum(index[sha]['size'] for _key, sha in loose), 0
+            for _key, sha in loose:
                 if not everything and size <= self.limit(): break
                 path = self.root / 'files' / sha[:2] / (sha + '.' + index[sha]['ext'])
                 path.unlink(missing_ok=True)

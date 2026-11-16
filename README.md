@@ -1,86 +1,151 @@
-# Chattera
+<p align="center">
+  <img src="docs/user-guide/img/splash-en.jpg" alt="Chattera" width="480">
+</p>
 
-**A group chat for you and your AIs.**
-Bring multiple AI models into one conversation. Talk naturally, explore different perspectives, and keep the discussion going.
+<h3 align="center">A group chat for you and your AIs.</h3>
 
-![Chattera: four models answering in one chat](docs/user-guide/img/02-demo-chat.jpg)
+<p align="center">
+  Bring several AI models into one conversation. Talk naturally, hear different views, and keep the discussion going.
+</p>
 
-Chattera runs on your own computer. You add the models you want — through their API (DeepSeek, OpenAI, Anthropic,
-Google Gemini, Qwen, Kimi, GLM, OpenRouter, any OpenAI-compatible endpoint…) — and talk to them together: ask everyone,
-ask one, let them respond to each other, compare independent answers, read side by side, and lay out a discussion on a
-free canvas. It is a chat, not an agent platform: models answer; they do not run commands or edit files.
+<p align="center">
+  <a href="https://github.com/real-Keymio/Chattera/releases"><img alt="Release" src="https://img.shields.io/github/v/release/real-Keymio/Chattera?include_prereleases&label=release"></a>
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <img alt="English and Chinese" src="https://img.shields.io/badge/UI-English%20%7C%20%E4%B8%AD%E6%96%87-8a6fd1">
+</p>
 
-> **Cost.** Chattera is free and open source (MIT). When you use a real model, the model provider (or the relay you
-> choose) bills you directly for API usage. Demo mode calls no model and costs nothing.
+<p align="center">
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-## Five-minute start (Windows, no programming)
+---
 
-1. Download **`Chattera-Windows-x64.zip`** from the [Releases page](https://github.com/real-Keymio/Chattera/releases) and unzip it anywhere.
-2. Double-click **`Chattera.exe`**. The first start takes about ten seconds.
-3. In the welcome window choose **进入演示** (demo, no key needed) — or **添加连接**: pick a provider, paste the API key
-   from that provider's website, choose a model.
-4. Start a new chat and ask something. That's it.
+![Four models answering one question in Chattera](docs/user-guide/img/02-demo-chat-en.jpg)
 
-The ZIP contains two illustrated guides in Chinese: `01_先看这个.pdf` (two pages, first chat) and
-`02_Chattera完整使用指南.pdf` (everything else). They are also under **帮助** inside the app.
+Chattera runs on your own computer. Add the models you want through their API — DeepSeek, OpenAI, Anthropic, Google
+Gemini, Qwen, Kimi, GLM, OpenRouter or any OpenAI-compatible endpoint — and talk to them together: ask everyone or one
+by name, let them respond to each other, compare independent answers, read side by side, and lay a discussion out on a
+free canvas.
 
-## What it does
+It's a chat, not an agent platform: models answer; they don't run commands or edit your files.
+
+> **Free.** Chattera is open source (MIT). With real models, the provider you choose bills you directly for API usage.
+> The demo calls no model and costs nothing.
+
+## Get started in five minutes
 
 | | |
 |---|---|
-| **Group chat** | Several models in one conversation; address everyone or one by name; let a model respond to another's answer. |
-| **Independent answers** | Everyone answers without seeing the others first — for comparing views honestly. |
-| **Private messages** | Talk to a subset; the others never see it (enforced on the server, including for attachments and quotes). |
-| **Web search** | Each model uses its provider's own search when it has one (independent retrieval, the default), or everyone gets the same retrieved material (shared), or both (hybrid). Every answer shows what was actually searched and read. |
-| **Reading layouts** | 1–6 synchronized reading panes, and a free canvas for rounds, single messages, quoted passages, PDF pages and sources. |
-| **Research Library** | Per-chat library of the papers and pages the models actually used, with DOI/arXiv identity, notes and on-demand full text. |
-| **Documents** | PDF, Word, HTML, text and images as attachments; text recognition (OCR) for scanned PDFs, built into the portable package. |
-| **Your data stays local** | Chats, settings, keys and the library live in `%LOCALAPPDATA%\Chattera` (or next to the program in portable mode). |
+| **1. Download** | Get `Chattera-Windows-x64.zip` from [Releases](https://github.com/real-Keymio/Chattera/releases) and unzip it anywhere. No Python, no installer. |
+| **2. Start** | Double-click `Chattera.exe`. The first start takes about ten seconds. |
+| **3. Try the demo** | Choose **Open the demo** in the welcome window — no account or key needed. |
+| **4. Add a real model** | **Settings → Models & services → Add model**: pick a provider, paste your API key, tick a model. |
 
-![Free canvas](docs/user-guide/img/13-canvas.jpg)
+<p align="center">
+  <img src="docs/user-guide/img/01-welcome-crop-en.jpg" alt="Welcome window" width="49%">
+  <img src="docs/user-guide/img/07-add-deepseek-crop-en.jpg" alt="Adding a provider" width="49%">
+</p>
 
-## Two ways to install
+The interface follows your Windows display language (English or Chinese); switch it any time in
+**Settings → General → Language**. The ZIP includes an illustrated quick start, `01_Start_Here.pdf`.
 
-- **Regular users — Windows portable package.** Unzip and run; no Python needed. See [docs/INSTALL.md](docs/INSTALL.md#portable).
-- **Developers — from source, optionally with your coding agent.** `scripts\setup.ps1` checks Python, creates a virtual
-  environment, installs, runs the tests and starts Chattera. Coding agents should read [AGENTS.md](AGENTS.md).
-  Local subscription CLIs (Claude Code, Codex) can be connected through adapters — see
-  [docs/CLI_ADAPTER.md](docs/CLI_ADAPTER.md) and read [the compliance notes](docs/PRIVACY_AND_COMPLIANCE.md) first.
+## What it does
 
-Both use the same code; the agent route is a shortcut, not a requirement.
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Group chat</b><br>
+Several models in one conversation. Ask everyone, or name one; let a model respond to another's answer; quote a
+passage and follow up.
+</td>
+<td width="50%" valign="top">
+<b>Independent answers</b><br>
+Everyone answers without seeing the others, and nothing is shared until you reveal it — for comparing views honestly.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Web search you can check</b><br>
+Each model uses its provider's own search (or Chattera's), or everyone gets the same retrieved material. Every answer
+shows what was actually searched and read.
+</td>
+<td valign="top">
+<b>Private messages</b><br>
+Talk to a subset of the models; the others never see it. Enforced on the server, including attachments and quotes.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Read side by side</b><br>
+1–6 synchronized reading panes, or a free canvas for whole rounds, single answers, quoted passages, PDF pages and notes.
+</td>
+<td valign="top">
+<b>Research library</b><br>
+Per-chat library of the papers and pages the models actually used, with DOI / arXiv identity, notes and full text on
+demand.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Documents</b><br>
+PDF, Word, HTML, text and images as attachments; text recognition (OCR) for scanned PDFs is built in.
+</td>
+<td valign="top">
+<b>Local by design</b><br>
+Chats, settings, keys and the library stay in <code>%LOCALAPPDATA%\Chattera</code>. Chattera listens on 127.0.0.1 only.
+</td>
+</tr>
+</table>
+
+### A closer look
+
+<table>
+<tr>
+<td width="50%"><img src="docs/user-guide/img/12-two-columns.jpg" alt="Two reading panes"></td>
+<td width="50%"><img src="docs/user-guide/img/13-canvas.jpg" alt="Free canvas"></td>
+</tr>
+<tr>
+<td align="center"><sub>Side-by-side reading panes</sub></td>
+<td align="center"><sub>Free canvas: put answers and passages next to each other</sub></td>
+</tr>
+<tr>
+<td><img src="docs/user-guide/img/04-web-menu.jpg" alt="Web search modes"></td>
+<td><img src="docs/user-guide/img/11-layout-menu.jpg" alt="Reading layouts"></td>
+</tr>
+<tr>
+<td align="center"><sub>Independent, shared or hybrid web search</sub></td>
+<td align="center"><sub>1–6 reading panes or the free canvas</sub></td>
+</tr>
+</table>
+
+<sub>These four screenshots show the Chinese interface; everything is also available in English.</sub>
+
+## Install
+
+- **Windows portable package** — for everyone. Unzip and run; see [docs/INSTALL.md](docs/INSTALL.md#portable).
+- **From source** — for developers and their coding agents. `scripts\setup.ps1` checks Python, creates a virtual
+  environment, installs, runs the tests and starts Chattera. Coding agents should read [AGENTS.md](AGENTS.md) first.
 
 ## Documentation
 
-- [docs/INSTALL.md](docs/INSTALL.md) — portable package, source install, data folder, portable mode, ports, OCR
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pieces fit
-- [docs/CLI_ADAPTER.md](docs/CLI_ADAPTER.md) — adding a subscription CLI
-- [docs/PRIVACY_AND_COMPLIANCE.md](docs/PRIVACY_AND_COMPLIANCE.md) — where your data goes, terms of service, security
-- [AGENTS.md](AGENTS.md) — instructions for coding agents
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — third-party software and licenses
-- [SECURITY.md](SECURITY.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
+| | |
+|---|---|
+| [INSTALL](docs/INSTALL.md) | Portable package, source install, data folder, portable mode, ports, OCR |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | How the pieces fit together |
+| [PRIVACY_AND_COMPLIANCE](docs/PRIVACY_AND_COMPLIANCE.md) | Where your data goes, provider terms, security |
+| [CLI_ADAPTER](docs/CLI_ADAPTER.md) | The adapter interface for locally installed official CLIs |
+| [AGENTS](AGENTS.md) | Instructions for coding agents |
+| [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CHANGELOG](CHANGELOG.md) | Contributing, reporting vulnerabilities, release notes |
+| [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) | Third-party software and licenses |
 
 ## Known limitations
 
-- Windows 10/11 x64 only for the portable package. macOS and Linux can run from source but are **untested**.
-- Local only (127.0.0.1). There is no user authentication; do not expose it to a network.
-- No account sync, no mobile app. Chats cannot be deleted yet (archive instead); history is append-only by design.
-- Audio, video and image generation are out of scope.
-- Subscription-CLI connections exist only for Claude Code and Codex, are off by default, and whether you may use them
-  with a consumer subscription depends on each vendor's terms.
-- The interface is Chinese-first.
-
-## 中文简介
-
-Chattera 是一个在你自己电脑上运行的「你和多个 AI 的群聊」：把几个 AI 模型请进同一个对话，可以一起问、单独点名、
-让它们互相回应、比较各自独立的回答，也能多栏对照阅读、在自由画布上整理讨论，并为每个聊天保留一份资料库。
-
-**普通用户**：从 [Releases](https://github.com/real-Keymio/Chattera/releases) 下载 Windows 便携版，解压后双击
-`Chattera.exe`。先体验演示模式（不需要账号，不花钱），再在“设置 → 模型与服务”里添加自己的 API Key。
-压缩包里有两份图文指南：`01_先看这个.pdf` 和 `02_Chattera完整使用指南.pdf`。
-
-**费用**：Chattera 免费、开源。使用真实模型的费用由你选择的模型服务商按用量收取。
-
-**数据**：聊天、设置、Key 和资料库只保存在本机（默认 `%LOCALAPPDATA%\Chattera`），只在 127.0.0.1 上运行。
+- The portable package is Windows 10/11 x64 only. macOS and Linux can run from source but are **untested**.
+- Local use only: there is no user authentication, so don't expose it to a network.
+- No account sync or mobile app. Chats can't be deleted yet (archive them instead); history is append-only by design.
+- No audio, video or image generation.
+- The full user guide is Chinese only for now; the English quick start covers the first chat.
 
 ## License
 

@@ -1,6 +1,7 @@
 // Single client-side state store + WebSocket connection.
 // The browser is the local human's full view; model permissions are enforced by the server only.
 import { TOKEN, api, store, explain, h } from './util.js';
+import { t } from './i18n.js';
 
 // Stable participant ids. Display labels never replace these ids.
 // Both lists are filled from the server (`/api/chat/models` → participants):
@@ -91,7 +92,7 @@ export const roomOf = channel => S.rooms.find(r => r.channel === channel);
 export const activeRoom = () => roomOf(S.active);
 export const audienceOf = msg => msg?.metadata?.visibility || 'public';
 export const rootOf = msg => msg.metadata?.version_root ?? msg.id;
-export const audienceText = scope => scope === 'public' ? '公开' : '仅 ' + scope.map(label).join('、') + ' 可见';
+export const audienceText = scope => scope === 'public' ? t('公开') : t('仅 ') + scope.map(label).join(t('、')) + t(' 可见');
 
 /** Backend capabilities of an identity in a room, or null when unknown (server stays authoritative). */
 export function capsOf(room, id) {
@@ -183,7 +184,7 @@ export function connect() {
     ws.onclose = event => {
         if (event.code === 4003) { location.reload(); return; }  // server restarted: new session token
         S.connected = false; S.historyReady = false; emit('conn');
-        failPending('连接已断开，消息尚未确认送达。草稿已保留，重连后请检查是否已发送。');
+        failPending(t('连接已断开，消息尚未确认送达。草稿已保留，重连后请检查是否已发送。'));
         retry = setTimeout(connect, 2000);
     };
 }
@@ -256,11 +257,11 @@ function failPending(text) {
  * draft until this resolves.
  */
 export function sendMessage(payload, wait = 30000) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error('正在重新连接，消息尚未发送。'));
-    if (pending) return Promise.reject(new Error('上一条消息仍在发送中。'));
+    if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error(t('正在重新连接，消息尚未发送。')));
+    if (pending) return Promise.reject(new Error(t('上一条消息仍在发送中。')));
     return new Promise((resolve, reject) => {
         pending = { channel: payload.channel, resolve, reject };
-        pending.timer = setTimeout(() => failPending('没有收到服务器确认。消息可能未被保存；草稿已保留，请检查后重试。'), wait);
+        pending.timer = setTimeout(() => failPending(t('没有收到服务器确认。消息可能未被保存；草稿已保留，请检查后重试。')), wait);
         ws.send(JSON.stringify(payload));
     });
 }

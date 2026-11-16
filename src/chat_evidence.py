@@ -20,6 +20,7 @@ from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlencode, urljoin, urlsplit
+from chattera_i18n import _
 
 AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chattera-local-research/1.0'
 MAX_BYTES = 16_000_000
@@ -41,7 +42,7 @@ def http_get(url, accept='*/*', deadline=20, limit=MAX_BYTES, headers=None):
     if not _slots.acquire(timeout=deadline):
         raise TimeoutError('retrieval queue busy')
     try:
-        for _ in range(5):
+        for _attempt in range(5):
             if len(url) > 4096 or any(ord(c) < 33 or ord(c) > 126 for c in url):
                 raise ValueError('Invalid URL')
             parsed = urlsplit(url)
@@ -191,7 +192,7 @@ class Evidence:
             return response.json()
 
     def _duckduckgo(self, query):
-        _, _, body = http_get('https://html.duckduckgo.com/html/?' + urlencode({'q': query}), 'text/html', 15, 2_000_000)
+        _status, _headers, body = http_get('https://html.duckduckgo.com/html/?' + urlencode({'q': query}), 'text/html', 15, 2_000_000)
         html = body.decode('utf-8', 'replace')
         rows = []
         for block in re.split(r'<div class="result results_links', html)[1:]:
@@ -228,7 +229,7 @@ class Evidence:
             error = (type(exc).__name__ + ': ' + str(exc))[:120]
         if self.settings().get('reader_fallback', True):
             try:
-                _, _, body = http_get('https://r.jina.ai/' + url, 'text/plain', 30, 4_000_000)
+                _status, _headers, body = http_get('https://r.jina.ai/' + url, 'text/plain', 30, 4_000_000)
                 text = body.decode('utf-8', 'replace')
                 title = re.search(r'^Title: (.*)$', text, re.M)
                 date = re.search(r'^Published Time: (.*)$', text, re.M)
@@ -302,7 +303,7 @@ class Evidence:
             source = ((w.get('primary_location') or {}).get('source') or {})
             rows.append(dict(title=w.get('title') or '', authors=[a['author']['display_name'] for a in w.get('authorships', [])[:10] if a.get('author')],
                 year=w.get('publication_year'), venue=source.get('display_name') or '', doi=(w.get('doi') or '').replace('https://doi.org/', ''),
-                url=w.get('doi') or w.get('id') or '', abstract=' '.join(word for _, word in words)[:4000], cited_by=w.get('cited_by_count'),
+                url=w.get('doi') or w.get('id') or '', abstract=' '.join(word for _pos, word in words)[:4000], cited_by=w.get('cited_by_count'),
                 oa_url=best.get('pdf_url') or best.get('landing_page_url') or (w.get('open_access') or {}).get('oa_url') or '',
                 pmcid=((w.get('ids') or {}).get('pmcid') or '').rsplit('/', 1)[-1], pmid=((w.get('ids') or {}).get('pmid') or '').rsplit('/', 1)[-1],
                 publication_type=w.get('type') or ''))
@@ -342,7 +343,7 @@ class Evidence:
         params = {'id_list': match.group(1)} if match else {'search_query': ' AND '.join('all:' + w for w in re.findall(r'[A-Za-z0-9][A-Za-z0-9-]+', query)[:7]) or 'all:' + query,
                                                                     'max_results': min(limit, 4), 'sortBy': 'relevance'}
         if doi and not match: return []
-        _, _, body = http_get('https://export.arxiv.org/api/query?' + urlencode(params), 'application/atom+xml', 15, 2_000_000)
+        _status, _headers, body = http_get('https://export.arxiv.org/api/query?' + urlencode(params), 'application/atom+xml', 15, 2_000_000)
         ns = {'a': 'http://www.w3.org/2005/Atom'}
         rows = []
         for entry in ET.fromstring(body).findall('a:entry', ns):
@@ -360,7 +361,7 @@ class Evidence:
         if row.get('fulltext_pmcid') or row.get('pmcid'):
             pmcid = row.get('fulltext_pmcid') or row['pmcid']
             try:
-                _, _, body = http_get(f'https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML', 'application/xml', 25)
+                _status, _headers, body = http_get(f'https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML', 'application/xml', 25)
                 root = ET.fromstring(body)
                 parts = []
                 for node in root.iter():
@@ -462,8 +463,8 @@ class Evidence:
 
 def summary_text(bundle):
     """Compact, human-readable record kept in room history (and read by models in later turns)."""
-    names = [n for n, on in (('网页搜索', bundle['request'].get('web')), ('学术检索', bundle['request'].get('scholar'))) if on]
-    lines = ['检索证据 · ' + ' + '.join(names) + ' · ' + '；'.join(q for qs in bundle['queries'].values() for q in qs)]
+    names = [n for n, on in ((_('网页搜索'), bundle['request'].get('web')), (_('学术检索'), bundle['request'].get('scholar'))) if on]
+    lines = [_('检索证据 · ') + ' + '.join(names) + ' · ' + _('；').join(q for qs in bundle['queries'].values() for q in qs)]
     for item in bundle['items']:
         head = f"[{item['n']}] {item['title'] or item.get('url', '')}"
         if item['kind'] == 'paper':
@@ -473,7 +474,7 @@ def summary_text(bundle):
         lines.append('    ' + (('doi:' + item['doi'] + '  ') if item.get('doi') else '') + (item.get('url') or '') + '  · ' + item['level_note'])
         body = item.get('snippet') or (item.get('abstract') or '')[:400]
         if body: lines.append('    ' + body.replace('\n', ' ')[:400])
-    if not bundle['items']: lines.append('没有取得结果。')
+    if not bundle['items']: lines.append(_('没有取得结果。'))
     for error in bundle['errors'][:6]: lines.append('! ' + error)
     return '\n'.join(lines)[:20000]
 

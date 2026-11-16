@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from chat_identities import IDENTITIES, BUILTIN
 from chat_visibility import audience, effective
+from chattera_i18n import _
 
 
 def install(runtime, app_module):
@@ -99,17 +100,17 @@ def install(runtime, app_module):
         try:
             room = runtime.rooms.get(room_id)
             pins = list(room.get('pins', []))
-            if len(pins) >= 12: raise ValueError('最多固定 12 条；请先取消一些')
+            if len(pins) >= 12: raise ValueError(_('最多固定 12 条；请先取消一些'))
             text, author, source = str(body.get('text') or '').strip(), None, None
             if body.get('message_id') is not None:
                 message = store.get_by_id(body['message_id'])
                 if not message or message.get('channel', 'general') != room['channel'] or message.get('type', 'chat') != 'chat':
                     raise ValueError('Message unavailable')
-                if audience(message) != 'public': raise ValueError('私聊内容不能固定到房间背景；请先公开分享')
+                if audience(message) != 'public': raise ValueError(_('私聊内容不能固定到房间背景；请先公开分享'))
                 from chat_visibility import model_message
                 author, source = model_message(message, store.get_by_id)['sender'], message['id']
                 text = text or message['text']
-            if not text or len(text) > 2000: raise ValueError('固定内容需要 1–2000 个字符；较长的回答请先选中要固定的那一段')
+            if not text or len(text) > 2000: raise ValueError(_('固定内容需要 1–2000 个字符；较长的回答请先选中要固定的那一段'))
             from chat_secrets import redact
             pins.append(dict(id=uuid.uuid4().hex[:12], text=redact(text), source_message_id=source, author=author, created_at=time.time()))
             return runtime.rooms.patch(room_id, pins=pins)
@@ -169,7 +170,7 @@ def install(runtime, app_module):
                     if m['id'] <= cutoff and m.get('type', 'chat') in ('chat', 'evidence')]
             if not rows or rows[-1]['id'] != cutoff: raise ValueError('Branch from a current message in this chat')
             if len(rows) > 3000: raise ValueError('This chat is too long to branch in one step')
-            name = runtime.rooms.validate_name(body.get('name') or (source['name'][:60] + ' · 分支'))
+            name = runtime.rooms.validate_name(body.get('name') or (source['name'][:60] + _(' · 分支')))
 
             def copy_history():
                 room = runtime.create(name)

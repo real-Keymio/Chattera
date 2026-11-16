@@ -147,6 +147,11 @@ Chats, settings, keys and the library stay in <code>%LOCALAPPDATA%\Chattera</cod
 - No audio, video or image generation.
 - The full user guide is Chinese only for now; the English quick start covers the first chat.
 
+## Acknowledgements
+
+Chattera was built with AI coding agents: OpenAI Codex wrote most of the early backend, and Claude Code did much of
+the later work, including the interface and this release. Both are credited as co-authors in the commit history.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Chattera is built on [agentchattr](https://github.com/bcurts/agentchattr) by Ben Curtis (MIT).

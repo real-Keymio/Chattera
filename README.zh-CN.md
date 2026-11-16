@@ -143,6 +143,11 @@ Kimi、智谱 GLM、OpenRouter，或任何 OpenAI 兼容的服务。然后和它
 - 没有账号同步，也没有手机版。聊天暂时不能删除（可以归档）；历史记录按设计只追加、不改写。
 - 不支持音频、视频和图片生成。
 
+## 致谢
+
+Chattera 是和 AI 编程助手一起写出来的：早期的后端大部分由 OpenAI Codex 完成，后来的界面和这次发布等工作大多由
+Claude Code 完成。两者都作为共同作者记录在提交历史里。
+
 ## 许可
 
 MIT，见 [LICENSE](LICENSE)。Chattera 基于 Ben Curtis 的 [agentchattr](https://github.com/bcurts/agentchattr)（MIT）。

@@ -40,7 +40,8 @@ _executor = None
 def limited(operation, name="history"):
     global calls
     calls += 1
-    if calls > 8:
+    from chat_tools import TOOL_BUDGET
+    if calls > TOOL_BUDGET:
         return "Tool-call limit reached. Please answer from available evidence."
     started = time.monotonic()
     evidence = {"tool": name, "status": "started", "time": time.time()}

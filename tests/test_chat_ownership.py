@@ -232,6 +232,7 @@ def test_task_mcp_room_cutoff_and_limits(env, tmp_path):
                 for target in (foreign["id"], future["id"]):
                     result = await client.call_tool("chat_read", {"message_id": target})
                     assert "not found" in result.content[0].text
-                for _ in range(6): result = await client.call_tool("chat_context", {})
+                from chat_tools import TOOL_BUDGET  # 3 calls above; the budget is then spent and the next one is refused
+                for _ in range(TOOL_BUDGET - 2): result = await client.call_tool("chat_context", {})
                 assert "limit reached" in result.content[0].text
     asyncio.run(check())

@@ -394,7 +394,7 @@ def install(runtime, app_module, cfg, config_path):
                     registry.write_key(name, Path(other['key_file']).read_text('utf-8').strip())
                 for key in [k for k, v in changes.items() if v is None and k not in ('max_requests', 'thinking')]: changes.pop(key)
                 if changes.get('thinking') is None: changes.pop('thinking', None)
-                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 2: changes['max_requests_per_task'] = 6
+                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 10: changes['max_requests_per_task'] = 10
                 registry.data['profiles'][name] = changes
                 model = changes.get('model') or (existing or {}).get('model')
                 entry = registry.data['catalog'].setdefault(name, {}).get(model)

@@ -87,6 +87,12 @@ def external(name, args, service):
     return body, dict(url=page['url'], title=page.get('title', ''), level='page text read', characters=len(part), total_characters=page['total_characters'])
 
 
+# Search/read calls one reply may make (library_* bookkeeping has its own allowance). A literature task searches in parallel:
+# 8 was used up by a single round. When the budget is spent the model is asked to answer from what it has.
+TOOL_BUDGET=24
+LIBRARY_BUDGET=32
+
+
 class FrozenTools:
     def __init__(self,snapshot,audit_path=None):
         self.snapshot,self.audit_path,self.calls=snapshot,audit_path,0
@@ -97,10 +103,10 @@ class FrozenTools:
         # Library operations are local bookkeeping: they have their own allowance and do not use up the search/read budget.
         if name.startswith('library_'):
             self.library_calls=getattr(self,'library_calls',0)+1
-            if self.library_calls>16: return 'Library-call limit reached for this reply.'
+            if self.library_calls>LIBRARY_BUDGET: return 'Library-call limit reached for this reply.'
         else:
             self.calls+=1
-            if self.calls>8: return 'Tool-call limit reached. Answer from available evidence.'
+            if self.calls>TOOL_BUDGET: return 'Tool-call limit reached. Answer from available evidence.'
         start=time.monotonic(); event={'tool':name,'status':'started','time':time.time()}
         from chat_rooms import append_event
         if self.audit_path: append_event(self.audit_path,event)

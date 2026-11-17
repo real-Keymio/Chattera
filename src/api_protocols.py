@@ -55,8 +55,27 @@ def initial(cfg,prompt,images):
         parts.append({'type':'image','source':{'type':'base64','media_type':mime,'data':encoded}} if p=='anthropic-messages' else {'inlineData':{'mimeType':mime,'data':encoded}})
     return [{'role':'user',('content' if p=='anthropic-messages' else 'parts'):[({'type':'text','text':prompt} if p=='anthropic-messages' else {'text':prompt}),*parts]}]
 
-def body(cfg,messages,schemas,native=None):
-    """`native` switches on the provider's own search for this request, instead of Chattera's function tools."""
+def body(cfg,messages,schemas,native=None,final=False):
+    """`native` switches on the provider's own search for this request, instead of Chattera's function tools.
+    `final`: the tool budget is spent; tools stay declared (earlier rounds used them) but the model may not call any more."""
+    result=_body(cfg,messages,schemas,native)
+    if final and result.get('tools'):
+        p=protocol(cfg)
+        if p in ('openai-chat','openai-responses'):result['tool_choice']='none'
+        elif p=='anthropic-messages':result['tool_choice']={'type':'none'}
+        else:result['toolConfig']={'functionCallingConfig':{'mode':'NONE'}}
+    return result
+
+def final_note(cfg,messages,text):
+    """Tell the model, after the last tool results, that it must answer now."""
+    p=protocol(cfg)
+    if p=='anthropic-messages' and messages and messages[-1].get('role')=='user' and isinstance(messages[-1].get('content'),list):messages[-1]['content'].append({'type':'text','text':text})
+    elif p=='openai-responses':messages.append({'role':'user','content':[{'type':'input_text','text':text}]})
+    elif p=='openai-chat':messages.append({'role':'user','content':text})
+    elif p=='google-generate-content' and messages and messages[-1].get('role')=='user':messages[-1]['parts'].append({'text':text})
+    else:messages.append({'role':'user','content':[{'type':'text','text':text}]} if p=='anthropic-messages' else {'role':'user','parts':[{'text':text}]})
+
+def _body(cfg,messages,schemas,native=None):
     p=protocol(cfg);effort=cfg.get('effort',cfg.get('reasoning_value'));thinking=cfg.get('thinking')
     if p=='openai-chat':
         result={'model':cfg['model'],'messages':messages,cfg.get('output_limit_field','max_tokens'):cfg['max_output_tokens']}

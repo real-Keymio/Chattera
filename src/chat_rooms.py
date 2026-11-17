@@ -242,13 +242,14 @@ class ContextBuilder:
             room_prompt["rules"] = list(dict.fromkeys(r for r in room_prompt["rules"]
                                                       if r not in global_rules["rules"]))
         from chat_registry import LABELS
+        from chat_tools import TOOL_BUDGET
         payload = dict(room_id=room["id"], identity=IDENTITY.format(model=model, label=LABELS.get(model, model)),
                        global_rules=global_rules, room_context=room_prompt,
                        summary=None, history=[], references=[], current=self.project(current),
                        action=metadata.get("action_instruction", ""),
                        selected_excerpt=metadata.get("quote_text", ""),
                        research_tools=("available: research_search (metadata and abstracts), research_read (open-access full text), "
-                                       "web_search, web_read, calc. At most 8 tool calls per reply; if shared_evidence is present it was already retrieved for this turn, "
+                                       "web_search, web_read, calc. At most "+str(TOOL_BUDGET)+" tool calls per reply; if shared_evidence is present it was already retrieved for this turn, "
                                        "so read it before searching again" if snapshot.get("research_allowed", False) else
                                        "disabled: private context cannot be sent to external scholarly services"))
         if snapshot.get('research_lens'):
@@ -270,7 +271,7 @@ class ContextBuilder:
                           'until the user shares them with you. ' + ('library_read gives a source\'s text (fetched on demand); library_save keeps a source you rely on, with your reading note and the '
                           'passage and locator that support your claim. Your notes stay yours until the user shares them. Save only what you actually use.' if can_call else
                           'You cannot open them yourself on this connection; ask the user if you need a passage.'))
-            payload['research_tools'] = payload['research_tools'].replace('At most 8 tool calls per reply', 'At most 8 search/read tool calls per reply (library_* calls are counted separately)')
+            payload['research_tools'] = payload['research_tools'].replace('At most '+str(TOOL_BUDGET)+' tool calls per reply', 'At most '+str(TOOL_BUDGET)+' search/read tool calls per reply (library_* calls are counted separately)')
         if snapshot.get('search'):
             from chat_search import instruction
             payload.update(instruction(snapshot['search'], bool(snapshot.get('shared_evidence'))))

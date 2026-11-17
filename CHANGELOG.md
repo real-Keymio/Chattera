@@ -13,6 +13,10 @@
   emptied in one step. Everything recorded only for that chat goes with it: messages and versions, attachments and their
   parse cache, reply records, summaries, automatic memory, shared-retrieval bundles, canvas and research library. Cached
   library files are removed only when no other chat uses them.
+- **Research replies no longer fail for searching too much.** A reply may make 24 search/read calls (was 8, which one
+  round of parallel searches could use up). When the budget or the request rounds run out, the model gets one last
+  request with tool calls switched off and answers from what it found, saying what it could not check, instead of the
+  whole reply failing. API connections with tool calls get up to 10 request rounds.
 - **Branches are independent copies**: a branch now also gets its own copy of the research library, so deleting either
   chat never affects the other.
 - **Fix:** replies from a participant whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own

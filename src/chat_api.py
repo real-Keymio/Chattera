@@ -59,7 +59,7 @@ class APIBackend:
         if limit is not None and (type(limit) is not int or not 1<=limit<=100000):
             raise ValueError('Invalid API limit: max_requests')
         for key, default, upper in [('timeout',120,300),('max_output_tokens',2048,32768),
-                                    ('max_requests_per_task',9,9)]:
+                                    ('max_requests_per_task',9,20)]:
             value = cfg.setdefault(key,default)
             if type(value) is not int or not 1 <= value <= upper:
                 raise ValueError('Invalid API limit: '+key)
@@ -150,10 +150,16 @@ class APIBackend:
                     return json.dumps(request,ensure_ascii=False,separators=(',',':'))
                 if planned[0]:messages=wire.initial(cfg,await own_search(),images)
                 retried=dict(limit=False,search=False)
-                for _ in range(cfg['max_requests_per_task']+(3 if search else 1)):
+                from chat_tools import TOOL_BUDGET
+                rounds=cfg['max_requests_per_task']+(3 if search else 1)
+                # When the tool budget or the request rounds run out, the model gets one last request with tools switched off
+                # and is told to answer from what it has. A reply is never thrown away only because the model kept searching.
+                finishing=False
+                for attempt in range(rounds):
                     if cancel.is_set(): raise TimeoutError('API task cancelled')
                     self.reserve()
-                    body=wire.body(cfg,messages,[] if native[0] else (tool_schemas(snapshot) if cfg.get('tools') else []),native[0])
+                    final=finishing or (attempt==rounds-1 and bool(tool_calls))
+                    body=wire.body(cfg,messages,[] if native[0] else (tool_schemas(snapshot) if cfg.get('tools') else []),native[0],final=final)
                     async with client.stream('POST',wire.endpoint(cfg),headers=headers,json=body) as response:
                         if response.status_code != 200:
                             error=bytearray()
@@ -194,9 +200,10 @@ class APIBackend:
                         retried['search']=True  # search was asked for and the model answered without it: ask once more, then accept its choice
                         continue
                     calls=parsed['calls']
+                    if calls and final and parsed['text']:calls=[]  # asked to stop calling tools: keep the answer it wrote
                     if calls:
                         if not cfg.get('tools'): raise ValueError('Unexpected provider tool calls')
-                        if len(calls)+len(tool_calls)>8: raise ValueError('API tool-call limit reached')
+                        if final or len(tool_calls)>TOOL_BUDGET*3: raise ValueError('API tool-call limit reached')
                         results=[]
                         for call in calls:
                             tool_calls.append(redact(call['name']))
@@ -204,6 +211,10 @@ class APIBackend:
                         wire.tool_results(cfg,messages,parsed['state'],calls,results)
                         if executor.images:
                             wire.attach_images(cfg,messages,executor.images);executor.images=[]
+                        if executor.calls>=TOOL_BUDGET or attempt>=rounds-2:
+                            finishing=True
+                            wire.final_note(cfg,messages,'Tool budget for this reply is used up. Do not call any more tools. Write your final answer now from what you have found, '
+                                                         'and say plainly what you could not check or read.')
                         continue
                     return redact(dict(text=parsed['text'],model=parsed['model'],requested_model=cfg['model'],
                                 requested_effort=cfg.get('effort',cfg.get('reasoning_value','UNKNOWN')),

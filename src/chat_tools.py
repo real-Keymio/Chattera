@@ -20,6 +20,9 @@ def tool_schemas(snapshot):
     if snapshot.get('library'):
         from chat_library import tool_specs
         specs += tool_specs()
+    if snapshot.get('workspace'):
+        import chat_files
+        specs += chat_files.tool_specs() + ([chat_files.download_spec()] if snapshot.get('research_allowed') else [])
     return [{'type':'function','function':{'name':name,'description':description,'parameters':{'type':'object','properties':props,'required':required,'additionalProperties':False}}} for name,description,props,required in specs]
 
 
@@ -90,23 +93,31 @@ def external(name, args, service):
     return body, dict(url=page['url'], title=page.get('title', ''), level='page text read', characters=len(part), total_characters=page['total_characters'])
 
 
-# Search/read calls one reply may make (library_* bookkeeping has its own allowance). A literature task searches in parallel:
-# 8 was used up by a single round. When the budget is spent the model is asked to answer from what it has.
-TOOL_BUDGET=60
+# Replies pace themselves, as in a web chat: the model searches and reads until it has enough. These numbers only stop a
+# runaway loop; the real bounds are the reply's time limit and the user's stop button. When one is reached the model is
+# asked to answer from what it has.
+TOOL_BUDGET=300
 READ_CHARS=20000      # characters one web_read / research_read returns; continue with offset
 RESULT_CHARS=26000    # one tool result as the model receives it
-LIBRARY_BUDGET=80
+LIBRARY_BUDGET=300
+REPEAT_LIMIT=2       # the same call with the same arguments: answered from the first result after this many
 
 
 class FrozenTools:
     def __init__(self,snapshot,audit_path=None):
         self.snapshot,self.audit_path,self.calls=snapshot,audit_path,0
+        self.seen,self.repeats={},0   # identical calls: a model going round in circles
         self.images=[]  # page images a tool produced, handed to the model by the backend that runs this executor
         self.service=None
 
     def call(self,name,args):
+        signature=name+json.dumps(args,sort_keys=True,ensure_ascii=False,default=str)[:2000]
+        self.seen[signature]=self.seen.get(signature,0)+1
+        if self.seen[signature]>REPEAT_LIMIT and not name.startswith('workspace_'):
+            self.repeats+=1
+            return 'You already made this exact call; use its earlier result, try a different query, or write your answer.'
         # Library operations are local bookkeeping: they have their own allowance and do not use up the search/read budget.
-        if name.startswith('library_'):
+        if name.startswith(('library_','workspace_')):
             self.library_calls=getattr(self,'library_calls',0)+1
             if self.library_calls>LIBRARY_BUDGET: return 'Library-call limit reached for this reply.'
         else:
@@ -123,7 +134,8 @@ class FrozenTools:
             if set(args)-set(schema['properties']) or set(schema['required'])-set(args): raise ValueError('Invalid tool arguments')
             for key,value in args.items():
                 if schema['properties'][key]['type']=='integer' and type(value) is not int: raise ValueError('Invalid integer')
-                if schema['properties'][key]['type']=='string' and (not isinstance(value,str) or len(value)>(20000 if name=='calc' else 8000)): raise ValueError('Invalid string')
+                if schema['properties'][key]['type']=='boolean' and type(value) is not bool: raise ValueError('Invalid boolean')
+                if schema['properties'][key]['type']=='string' and (not isinstance(value,str) or len(value)>(4_000_000 if key=='content' else 20000 if name=='calc' else 8000)): raise ValueError('Invalid string')
             dispatched=True
             event['args']={k:(v if type(v) is int else str(v)[:300]) for k,v in args.items()}
             rows=self.snapshot['history']
@@ -137,6 +149,10 @@ class FrozenTools:
             elif name=='calc':
                 from chat_calc import calculate
                 result=calculate(args['expression'])
+            elif name.startswith('workspace_'):
+                import chat_files
+                if self.service is None and (self.snapshot.get('research_allowed') or name=='workspace_read'):self.service=retrieval(self.snapshot,Path(self.audit_path).parent if self.audit_path else None)
+                result,event['summary']=chat_files.run_tool(name,args,self.snapshot,self.service)
             elif name.startswith('library_'):
                 from chat_library import run_tool
                 if self.service is None and (self.snapshot.get('research_allowed') or name=='library_view_page'):self.service=retrieval(self.snapshot,Path(self.audit_path).parent if self.audit_path else None)

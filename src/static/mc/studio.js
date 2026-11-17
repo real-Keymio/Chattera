@@ -9,7 +9,7 @@ import { librarySettings } from './library.js';
 import { openGuide, showWelcome } from './setup.js';
 import { t } from './i18n.js';
 
-const SECTIONS = [['models', t('模型与服务'), 'cpu'], ['lenses', t('研究视角'), 'lens'], ['tools', t('检索与工具'), 'search'], ['look', t('外观'), 'spark'],
+const SECTIONS = [['models', t('模型与服务'), 'cpu'], ['lenses', t('分析框架'), 'lens'], ['tools', t('检索与工具'), 'search'], ['look', t('外观'), 'spark'],
     ['general', t('通用'), 'gear'], ['data', t('数据'), 'archive'], ['diagnostics', t('诊断'), 'info'], ['help', t('帮助'), 'book']];
 const group = (title, ...kids) => h('section', { class: 'set-group' }, h('h3', null, title), kids);
 const row = (name, hint, control) => h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, h('span', null, name), hint ? h('small', null, hint) : null), control);
@@ -32,7 +32,7 @@ async function lenses(box) {
         const summary = h('input', { class: 'input', value: lens?.summary || '', maxLength: 200, placeholder: t('一句话说明它关注什么（显示在菜单里）') });
         const method = h('textarea', { class: 'input area', value: lens?.method || '', maxLength: 4000, style: { minHeight: '220px' },
             placeholder: t('用几句话描述这种分析方法：读问题时先看什么、追问什么、怎样算证据充分。写方法，不要写结论，也不要规定回答的格式。') });
-        modal({ title: lens?.id && !lens.builtin ? t('编辑研究视角') : t('新的研究视角'), wide: true,
+        modal({ title: lens?.id && !lens.builtin ? t('编辑分析框架') : t('新的分析框架'), wide: true,
             body: [h('label', { class: 'field' }, t('名称'), name), h('label', { class: 'field' }, t('简介'), summary), h('label', { class: 'field' }, t('方法说明（会原样交给模型）'), method),
                 h('p', { class: 'hint' }, t('好的视角描述的是“怎么看”，而不是“看出什么”。模型仍然按开放讨论的方式回答：可以不同意你，也不必写成报告。用英文写通常更稳定，中文也可以。'))],
             actions: [{ label: t('保存'), primary: true, action: async () => {
@@ -40,7 +40,7 @@ async function lenses(box) {
                 S.models = value.overview; rerender();
             } }] });
     };
-    box.append(h('p', { class: 'hint' }, t('研究视角是一段分析方法说明，随提问交给模型。它决定模型重点审视什么，不预设结论，也不把模型变成固定角色。可以为整个聊天、某位参与者或单次提问选择。')),
+    box.append(h('p', { class: 'hint' }, t('分析框架是一段分析方法说明，随提问交给模型。它决定模型重点审视什么，不预设结论，也不把模型变成固定角色。可以为整个聊天、某位参与者或单次提问选择。')),
         h('div', { class: 'card-actions' }, h('button', { class: 'btn', onclick: () => edit(null) }, t('＋ 新建视角'))),
         ...list.map(lens => {
             const text = h('div', { class: 'lens-method', hidden: true }, lens.method || t('不附加方法说明：模型只收到通用的开放讨论约定（用户决定方向、主动质疑前提、保留分歧、不强求共识、不把讨论变成任务交付）。'));
@@ -94,7 +94,16 @@ async function tools(box) {
         const yes = names.some(n => n === 'claude' || n === 'codex' || profiles.find(p => p.name === n)?.tools);
         return h('span', { class: 'cap ' + (yes ? 'yes' : '') }, sigil(id, 'xs'), t(' {0}：{1}', label(id), yes ? t('可自行检索') : t('只接收共享检索')));
     });
+    const minutes = h('select', { class: 'input' }, [[10, t('10 分钟')], [30, t('30 分钟（默认）')], [60, t('1 小时')], [120, t('2 小时')], [0, t('不限，直到模型答完或你点停止')]]
+        .map(([v, text]) => h('option', { value: v, selected: (s.reply_minutes ?? 30) === v }, text)));
+    minutes.addEventListener('change', () => save({ reply_minutes: Number(minutes.value) }));
+    const agent = h('input', { type: 'checkbox', checked: s.agent !== false, onchange: event => save({ agent: event.target.checked }) });
     box.append(
+        group(t('回答节奏'),
+            h('p', { class: 'hint' }, t('和网页版聊天一样，模型自己决定搜多少、读多少，觉得够了就作答；没有固定的次数上限。回答进行中能看到它在做什么、已经走了几步，随时可以停。')),
+            row(t('研究代理'), t('开启后：本机订阅的 Claude Code、Codex 在全员可见的提问里始终可以用自己的联网搜索；每个聊天有一个“聊天文件夹”，模型可以在里面记笔记、存表格、下载开放获取的论文，文件会列在回答下面。模型不能运行命令，也碰不到文件夹以外的东西。'), agent),
+            row(t('每条回答最长时长'), t('到时还没写完，会先让模型用已有内容收尾（API 连接）；订阅 CLI 到时会停止。大型调研可以设成 1 小时或不限。'), minutes),
+            h('p', { class: 'hint' }, t('聊天文件夹放在资料库文件夹里（设置 → 数据 → 资料库），资料库在云盘里时它也一起同步；在房间设置 → 这个聊天里可以打开。'))),
         h('p', { class: 'hint' }, t('两种方式让讨论用上外部资料：① 在输入区打开“检索”，系统先检索一次，把同一份资料交给本轮所有回答者；② 支持工具的模型在回答过程中自行检索、读网页、读文献全文和核对数字。两种都会留下可追溯的记录。')),
         group(t('谁可以自行检索'), h('div', { class: 'profile-line' }, able), h('p', { class: 'hint' }, t('在 模型与服务 里为连接的模型打开“支持工具调用”即可启用。私聊上下文中，外部检索工具始终关闭。'))),
         group(t('网页搜索'),

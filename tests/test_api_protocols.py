@@ -137,7 +137,7 @@ def test_discovery_room_override_cancel_timeout_and_redaction(env,provider,monke
     assert r.tasks.wait(task['task_id'])['state']=='cancelled'
     provider.delay=1.3;r.tasks.backends['native_api'].config['timeout']=1
     done=r.tasks.wait(r.tasks.start('general','antigravity',q)['task_id'])
-    assert done['state']=='failed' and 'deadline' in done['reason']
+    assert done['state']=='failed' and ('deadline' in done['reason'] or 'timeout' in done['reason'])  # reply limit, or the connection's own per-request timeout
 
 
 def test_private_key_file_and_auth_headers(tmp_path):

@@ -314,7 +314,8 @@ class Pane {
                 h('span', { class: 'pending-state' }, state !== 'writing' && task.activity ? (task.activity.kind === 'read' ? t('正在读 ') + (task.activity.text || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 46) : t('正在搜索：') + (task.activity.text || '').slice(0, 46))
                     : task.regenerated_from != null ? t('正在重新生成') : state === 'writing' ? t('正在写回答') : task.search && task.search.path !== 'none' ? t('正在思考，可联网') : t('正在思考')),
                 h('span', { class: 'elapsed', dataset: { since: task.created_at || Date.now() / 1000 } }),
-                task.independent_mode ? badge(t('独立'), 'indep') : null, h('span', { class: 'grow' }),
+                task.steps ? h('span', { class: 'steps', title: t('这条回答到目前为止调用工具（搜索、阅读、记笔记等）的次数') }, t('{0} 步', task.steps)) : null,
+                task.independent_mode ? badge(t('背靠背'), 'indep') : null, h('span', { class: 'grow' }),
                 h('button', { class: 'icon-btn tiny', title: t('停止 {0}', label(task.identity)), onclick: () => stopTask(room, task.identity) }, icon(ICONS.stop, 11)), wave()));
         }
         this.pending.replaceChildren(...(grid.children.length ? [grid] : []));
@@ -568,8 +569,8 @@ function stateBadges(msg, scope) {
     const meta = msg.metadata || {}, out = [];
     if (scope !== 'public') out.push(badge(audienceText(scope), 'lock', 'lock', t('只有你和列出的模型有权读取这条消息')));
     if (meta.independent_group && scope !== 'public' && (meta.task_id || meta.source_task_id)) {
-        out.push(badge(t('独立回答 · 尚未公开'), 'indep', null, t('其他模型看不到这条回答；确认后可公开分享')));
-    } else if (meta.independent_mode) out.push(badge(meta.independent_mode === 'strict' ? t('严格独立提问') : t('独立提问'), 'indep'));
+        out.push(badge(t('背靠背 · 尚未公开'), 'indep', null, t('其他模型看不到这条回答；确认后可公开分享')));
+    } else if (meta.independent_mode) out.push(badge(meta.independent_mode === 'strict' ? t('严格背靠背提问') : t('背靠背提问'), 'indep'));
     if (meta.evidence) out.push(badge([meta.evidence.web ? t('网页') : null, meta.evidence.scholar ? t('学术') : null].filter(Boolean).join(' + ') + t('检索'), '', 'search', t('这条提问请求了共享检索')));
     if (meta.forked_from) out.push(badge(t('来自分支前的历史'), '', 'branch', t('这条消息是建立分支时从原聊天复制过来的')));
     if ((meta.version || 1) > 1 || meta.revision_event) {
@@ -612,6 +613,8 @@ function renderMessage(msg, pane) {
         if (msg.reply_to != null && shared) el.append(replyRef(msg, pane));
         el.append(body);
         if (atts) el.append(atts);
+        const saved = S.tasks.get(meta.task_id)?.workspace_files;
+        if (saved?.length) el.append(savedFiles(saved));
         if (meta.generated_from != null && S.replaced.has(meta.generated_from)) {
             el.append(h('div', { class: 'msg-note warn' }, t('这条回答针对的是提问的旧版本（#{0}），不是基于编辑后的内容生成。', meta.generated_from)));
         }
@@ -781,12 +784,22 @@ export function friendlyReason(reason = '') {
     if (/API cumulative request cap/.test(reason)) return t('被本机设置的 API 累计请求上限拦截（不是服务商余额不足）。');
     if (/incomplete or unsupported stop state/.test(reason)) return t('回答在完成前被截断（通常是达到了单次输出上限）。可在设置 → 模型与服务里调高这个连接的输出上限。');
     if (/per-task request\/tool round limit|tool-call limit/.test(reason)) return t('模型连续调用工具的次数达到上限，没有给出最终回答。可以重试，或把问题拆小。');
+    const limit = /Reply time limit reached \((\d+) min\)/.exec(reason);
+    if (limit) return t('这条回答达到了时长上限（{0} 分钟）。可以重试，或在设置 → 检索与工具里调长“每条回答最长时长”，也可以设为不限。', limit[1]);
     if (/API cancelled or total deadline|CLI total timeout|timed? ?out/i.test(reason)) return t('超过了这次调用的总时限。可以重试、缩短输入，或在设置 → 模型与服务里调大超时。');
     if (/server restart recovery/.test(reason)) return t('服务重启时这次调用被中断，请重新提问。');
     if (/does not support image/.test(reason)) return t('这个连接不支持图片输入。');
     if (/did not return a (successful|completed) final result|turn failed/.test(reason)) return t('CLI 运行结束但没有给出最终回答，可重试一次。');
     if (/API transport or response schema failure/.test(reason)) return t('API 调用失败（网络传输或返回格式问题；这条较早的记录没有保存具体阶段）。');
     return explain(reason);
+}
+
+/** Files a reply saved in the chat folder; they open in a new tab. */
+function savedFiles(paths) {
+    const room = activeRoom();
+    return h('div', { class: 'msg-files' }, h('span', { class: 'msg-files-head' }, icon(ICONS.doc, 13), t('存进了聊天文件夹')),
+        paths.map(path => h('a', { class: 'file-chip', href: room ? `/api/chat/rooms/${room.id}/files/raw?path=${encodeURIComponent(path)}` : '#', target: '_blank', rel: 'noopener', title: path }, path)),
+        room ? h('button', { class: 'link', onclick: () => api(`/api/chat/rooms/${room.id}/files/open`, {}).catch(e => toast(e.message, 'error')) }, t('打开文件夹')) : null);
 }
 
 function tick() {
@@ -826,7 +839,7 @@ function shareDialog(msg, author, ai) {
     });
 }
 function regenerate(msg, author) {
-    confirmDialog(t('重新生成这条回答'), t('{0} 将使用原提问时冻结的输入快照（含当时的检索资料与研究视角）和当时的模型设置重新回答，不会包含之后产生的消息或摘要。新回答会替换当前显示的版本，旧版本可在“版本历史”中查看和恢复。', label(author)),
+    confirmDialog(t('重新生成这条回答'), t('{0} 将使用原提问时冻结的输入快照（含当时的检索资料与分析框架）和当时的模型设置重新回答，不会包含之后产生的消息或摘要。新回答会替换当前显示的版本，旧版本可在“版本历史”中查看和恢复。', label(author)),
         t('重新生成'), () => messageOp(msg.id, 'regenerate'));
 }
 async function versionsDialog(msg) {

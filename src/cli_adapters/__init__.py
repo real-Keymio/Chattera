@@ -12,7 +12,8 @@ ADAPTERS = {}
 
 # Room tools the tool server offers to CLI replies (read-only: chat history of this room, research, library, calculator).
 ROOM_TOOLS = ("chat_read", "chat_search", "chat_context", "research_search", "research_read", "attachment_read", "web_search",
-              "web_read", "calc", "library_list", "library_read", "library_save", "library_view_page")
+              "web_read", "calc", "library_list", "library_read", "library_save", "library_view_page",
+              "workspace_list", "workspace_read", "workspace_write", "workspace_download")
 
 
 def register(adapter):

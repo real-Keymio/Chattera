@@ -89,7 +89,7 @@ def test_api_cancel_switch_timeout_failure_and_cap(env,provider):
     r.tasks.switch('general','antigravity','gemini_api')
     provider.delay=1.2;r.tasks.backends['gemini_api'].config['timeout']=1
     done=r.tasks.wait(r.tasks.start('general','antigravity',q)['task_id'])
-    assert done['state']=='failed' and 'deadline' in done['reason']
+    assert done['state']=='failed' and ('deadline' in done['reason'] or 'timeout' in done['reason'])  # reply limit, or the connection's own per-request timeout
     provider.delay=0;provider.fail=True
     done=r.tasks.wait(r.tasks.start('general','antigravity',q)['task_id'])
     assert done['state']=='failed' and '503' in done['reason']

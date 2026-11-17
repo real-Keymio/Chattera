@@ -224,7 +224,7 @@ def test_task_mcp_room_cutoff_and_limits(env, tmp_path):
             async with ClientSession(read, write) as client:
                 await client.initialize()
                 names = [t.name for t in (await client.list_tools()).tools]
-                assert set(names) == {"chat_read", "chat_search", "chat_context", "research_search", "research_read", "attachment_read", "web_search", "web_read", "calc", "library_list", "library_read", "library_save", "library_view_page"}
+                assert set(names) == {"chat_read", "chat_search", "chat_context", "research_search", "research_read", "attachment_read", "web_search", "web_read", "calc", "library_list", "library_read", "library_save", "library_view_page", "workspace_list", "workspace_read", "workspace_write", "workspace_download"}
                 result = await client.call_tool("chat_search", {"query": "needle"})
                 assert "old needle" in result.content[0].text
                 assert "foreign needle" not in result.content[0].text

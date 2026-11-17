@@ -91,7 +91,7 @@ class Codex(CLIAdapter):
         return command, prompt.encode('utf-8')
 
     def tool_event(self, event):
-        return int(event.get('type') == 'item.started' and event.get('item', {}).get('type') == 'mcp_tool_call')
+        return int(event.get('type') == 'item.started' and event.get('item', {}).get('type') in ('mcp_tool_call', 'web_search'))
 
     def parse(self, cfg, output):
         events = self.json_lines(output)

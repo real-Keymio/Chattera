@@ -92,6 +92,9 @@ class ProcessTree:
                 raise OSError("Cannot resume owned process")
 
 
+CAPTURE_LIMIT = 64_000_000   # stream-json of a long research reply (partial messages included)
+
+
 class CLIBackend:
     def __init__(self, name, config):
         self.name, self.config = name, config
@@ -112,8 +115,10 @@ class CLIBackend:
         directory = Path(task["directory"])
         try: frozen = json.loads((directory / 'snapshot.json').read_text('utf-8'))
         except (OSError, ValueError): frozen = {}
-        # Official web search of the CLI itself, only when this reply was started with it (frozen in the snapshot).
-        native = (frozen.get('search') or {}).get('path') == 'native'
+        # The CLI's own web search: when this reply was started with it, or in research-agent mode whenever the context
+        # may be searched at all (never in private context). Both are frozen in the snapshot.
+        native = (frozen.get('search') or {}).get('path') == 'native' or bool(frozen.get('agent') and frozen.get('research_allowed')
+                                                                            and self.config.get('native_search') != 'off')
         from chat_search import CliTrace
         trace = CliTrace(self.name, getattr(attach, 'search', None))
         command = self.command(directory, task.get("baseline", False), **({'search': True} if native else {}))
@@ -139,7 +144,7 @@ class CLIBackend:
             tool_count = 0
             while block := stream.readline(1_000_000):
                 byte_count[0] += len(block)
-                if byte_count[0] > 2_000_000:
+                if byte_count[0] > CAPTURE_LIMIT:
                     tree.kill()
                     break
                 output.append(block)
@@ -149,8 +154,10 @@ class CLIBackend:
                         if native: trace.feed(event)
                         if hasattr(attach, "progress") and self.adapter.progress_event(event):
                             attach.progress()
-                        tool_count += self.adapter.tool_event(event)
-                        if tool_count > (40 if native else 28):  # the tool server itself refuses politely after 8; this only stops a runaway loop
+                        step = self.adapter.tool_event(event)
+                        if step and hasattr(attach, 'step'): attach.step(step)
+                        tool_count += step
+                        if tool_count > 1000:  # only stops a runaway loop; replies otherwise pace themselves
                             tree.kill()
                     except (ValueError, TypeError, AttributeError):
                         pass
@@ -164,14 +171,15 @@ class CLIBackend:
             else:
                 proc.stdin.write(stdin_data)
                 proc.stdin.close()
-            deadline = time.monotonic() + self.config.get("timeout", 120)
+            limit = task.get('_deadline_seconds', self.config.get('timeout', 120))
+            deadline = time.monotonic() + limit if limit else None
             while proc.poll() is None:
-                if cancel.wait(.05) or time.monotonic() >= deadline:
+                if cancel.wait(.05) or (deadline and time.monotonic() >= deadline):
                     tree.kill()
-                    raise TimeoutError("Cancelled" if cancel.is_set() else "CLI total timeout (120s default); not an MCP/network timeout")
+                    raise TimeoutError("Cancelled" if cancel.is_set() else f"Reply time limit reached ({round(limit / 60)} min); not an MCP/network timeout")
             for thread in readers:
                 thread.join(5)
-            if proc.returncode or byte_count[0] > 2_000_000:
+            if proc.returncode or byte_count[0] > CAPTURE_LIMIT:
                 # No raw stderr logging: it can include unrelated configuration details. The CLI's own result text is kept.
                 said = self.adapter.failure_reason(b"".join(chunks).decode("utf-8", "replace")) if proc.returncode else None
                 said = "; CLI said: " + " ".join(str(redact(said)).split())[:200] if said else ""

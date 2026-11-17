@@ -4,7 +4,7 @@ A chat's data is spread over several stores. Each is cleaned here, never another
   messages (agentchattr_log.jsonl, todos)      reply calls (chat_calls/<task>, invocations.jsonl)
   summaries and their versions                 automatic-memory jobs (memory_calls)
   shared-retrieval bundles (evidence/<id>)     canvas and layout (workspaces/<room>.json)
-  uploaded attachments and their parse cache   research library (library/rooms/<room>.json)
+  uploaded attachments and their parse cache   research library (library/rooms/<room>.json)   chat folder (<library>/chat-files/<room>)
 A branch is a full copy of its source (messages, attachments, library), so deleting either never touches the other.
 Content-addressed caches shared by every chat (library files, rendered PDF pages) lose only what no remaining chat uses.
 
@@ -137,6 +137,10 @@ def delete_room(runtime, app_module, data_dir, room_id):
                     temp = memory.settings_path.with_suffix('.tmp'); temp.write_text(json.dumps(memory.disabled)); temp.replace(memory.settings_path)
         # 8. Canvas / layout, and the research library.
         (data_dir / 'workspaces' / (rid + '.json')).unlink(missing_ok=True)
+        try:
+            import chat_files
+            counts['chat_folder'] = _rmtree(chat_files.base(runtime) / rid)
+        except (OSError, AttributeError): counts['chat_folder'] = 0
         library = getattr(runtime, 'library', None)
         counts['library'] = library.forget_room(rid) if library else dict(sources=0, files_removed=0)
     runtime.sync_settings()

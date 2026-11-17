@@ -278,7 +278,9 @@ class Registry:
         return {**{k: dict(v, id=k, name=_(v['name']), summary=_(v['summary'])) for k, v in LENSES.items()}, **{k: dict(v, id=k, builtin=False) for k, v in self.data['lenses'].items()}}
 
     def search_settings(self):
-        value = dict(web_provider='duckduckgo', reader_fallback=True, planner='auto')
+        # reply_minutes: how long one reply may work (0 = no limit). agent: research-agent mode (web search for subscription CLIs
+        # whenever the context allows it, and a chat folder for every participant).
+        value = dict(web_provider='duckduckgo', reader_fallback=True, planner='auto', reply_minutes=30, agent=True)
         value.update({k: v for k, v in self.data['search'].items()})
         return value
 
@@ -394,7 +396,7 @@ def install(runtime, app_module, cfg, config_path):
                     registry.write_key(name, Path(other['key_file']).read_text('utf-8').strip())
                 for key in [k for k, v in changes.items() if v is None and k not in ('max_requests', 'thinking')]: changes.pop(key)
                 if changes.get('thinking') is None: changes.pop('thinking', None)
-                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 20: changes['max_requests_per_task'] = 20
+                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 100: changes['max_requests_per_task'] = 100
                 registry.data['profiles'][name] = changes
                 model = changes.get('model') or (existing or {}).get('model')
                 entry = registry.data['catalog'].setdefault(name, {}).get(model)
@@ -873,6 +875,10 @@ def install(runtime, app_module, cfg, config_path):
                     if body['web_provider'] not in ('duckduckgo', 'tavily', 'brave'): raise ValueError('Unknown search provider')
                     registry.data['search']['web_provider'] = body['web_provider']
                 if type(body.get('reader_fallback')) is bool: registry.data['search']['reader_fallback'] = body['reader_fallback']
+                if 'reply_minutes' in body:
+                    if type(body['reply_minutes']) is not int or not 0 <= body['reply_minutes'] <= 1440: raise ValueError('Reply time limit: 0 (none) to 1440 minutes')
+                    registry.data['search']['reply_minutes'] = body['reply_minutes']
+                if type(body.get('agent')) is bool: registry.data['search']['agent'] = body['agent']
                 if 'planner' in body:
                     if body['planner'] not in ('auto', 'off') and body['planner'] not in registry.backends(): raise ValueError('Unknown planner backend')
                     registry.data['search']['planner'] = body['planner']

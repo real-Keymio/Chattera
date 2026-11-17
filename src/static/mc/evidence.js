@@ -93,7 +93,7 @@ export function basisStrip(msg, author) {
         const names = [...new Set(calls)].map(n => TOOL[String(n).replace(/^mcp__room__/, '')] || n);
         chip('tool', t('自行调用工具 {0} 次 · {1}', calls.length, names.slice(0, 3).join(t('、'))));
     }
-    if (task.research_lens) chip('lens', task.research_lens.name, '', t('这次回答使用的研究视角'));
+    if (task.research_lens) chip('lens', task.research_lens.name, '', t('这次回答使用的分析框架'));
     if ((task.trimmed_history_ranges || []).length) chip('history', t('部分历史未带入'), 'warn', t('因容量限制，较早的一些消息没有进入这次输入'));
     if (!chips.length) return null;
     return h('div', { class: 'basis', style: { '--hue': color(author) } }, chips);
@@ -185,7 +185,7 @@ export async function openMaterials(taskId, author) {
     const sec = (title, ...kids) => h('section', { class: 'mat-sec' }, h('h4', null, title), kids);
     const out = [h('p', { class: 'modal-text' }, sigil(who), ' ', h('strong', null, label(who)), t(' · 请求模型 {0}', m.requested_model ?? t('未知')),
         m.actual_model && m.actual_model !== 'UNKNOWN' && m.actual_model !== m.requested_model ? t('（服务端报告 {0}）', m.actual_model) : '', m.effort && m.effort !== 'UNKNOWN' ? t(' · 推理强度 {0}', m.effort) : '',
-        m.lens ? t(' · 研究视角：{0}', m.lens.name) : '')];
+        m.lens ? t(' · 分析框架：{0}', m.lens.name) : '')];
     out.push(sec(t('文档'), m.documents.length ? m.documents.map(d => documentView(d, hue)) : h('p', { class: 'hint' }, t('这次调用没有涉及文档。'))));
     if (m.images.length) out.push(sec(t('图片（模型直接看到像素）'), m.images.map(i => h('div', { class: 'mat-line' }, `${i.name || t('图片')}${i.prepared_size ? t(' · 送入尺寸 {0}', i.prepared_size.join('×')) : ''}`))));
     if (m.shared_evidence) {

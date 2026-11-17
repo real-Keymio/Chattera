@@ -59,7 +59,7 @@ class APIBackend:
         if limit is not None and (type(limit) is not int or not 1<=limit<=100000):
             raise ValueError('Invalid API limit: max_requests')
         for key, default, upper in [('timeout',120,3600),('max_output_tokens',2048,128000),
-                                    ('max_requests_per_task',9,40)]:
+                                    ('max_requests_per_task',9,500)]:
             value = cfg.setdefault(key,default)
             if type(value) is not int or not 1 <= value <= upper:
                 raise ValueError('Invalid API limit: '+key)
@@ -95,9 +95,9 @@ class APIBackend:
     def run(self, prompt, task, attach, cancel):
         if not self.available():
             raise ValueError('API backend disabled or configured key environment variable absent')
-        return asyncio.run(self.run_async(prompt,task,cancel))
+        return asyncio.run(self.run_async(prompt,task,cancel,attach))
 
-    async def run_async(self,prompt,task,cancel):
+    async def run_async(self,prompt,task,cancel,attach=None):
         from chat_tools import FrozenTools, tool_schemas
         cfg=task.get('_effective_config',self.config)
         snapshot=json.loads((Path(task['directory'])/'snapshot.json').read_text('utf-8'))
@@ -112,6 +112,8 @@ class APIBackend:
         native=[search.get('native') if search.get('path')=='native' else None]
         planned=[search.get('path')=='multichat-planned']
         trace=[];citations=[];search_usage=[]
+        # The whole reply's time limit (Settings → Search & tools); each request still has the connection's own timeout.
+        deadline=task.get('_deadline_seconds',cfg['timeout']);started=time.monotonic()
         if native[0] and getattr(self,'search_refused_until',0)>time.time():
             # This account was refused the official search a short while ago: do not spend another failing request on it.
             trace.append(dict(kind='error',at=time.time(),via='official search',error='The provider refused its official search earlier ('+self.search_refused_why+'). Chattera search was used instead.'))
@@ -158,7 +160,8 @@ class APIBackend:
                 for attempt in range(rounds):
                     if cancel.is_set(): raise TimeoutError('API task cancelled')
                     self.reserve()
-                    final=finishing or (attempt==rounds-1 and bool(tool_calls))
+                    late=bool(deadline) and time.monotonic()-started>deadline*.85   # leave time to write the answer
+                    final=finishing or late or (attempt==rounds-1 and bool(tool_calls))
                     body=wire.body(cfg,messages,[] if native[0] else (tool_schemas(snapshot) if cfg.get('tools') else []),native[0],final=final)
                     async with client.stream('POST',wire.endpoint(cfg),headers=headers,json=body) as response:
                         if response.status_code != 200:
@@ -205,13 +208,17 @@ class APIBackend:
                         if not cfg.get('tools'): raise ValueError('Unexpected provider tool calls')
                         if final or len(tool_calls)>TOOL_BUDGET*3: raise ValueError('API tool-call limit reached')
                         results=[]
+                        if attach is not None and hasattr(attach,'step'):attach.step(len(calls))
                         for call in calls:
+                            if attach is not None and hasattr(attach,'search') and call['name'] in ('web_search','research_search','web_read','research_read','workspace_download'):
+                                a=call.get('args') or {}
+                                attach.search(dict(kind='search' if call['name'].endswith('search') else 'read',query=str(a.get('query','')),url=str(a.get('url','')),at=time.time()))
                             tool_calls.append(redact(call['name']))
                             results.append(await asyncio.to_thread(executor.call,redact(call['name']),redact(call['args'])))
                         wire.tool_results(cfg,messages,parsed['state'],calls,results)
                         if executor.images:
                             wire.attach_images(cfg,messages,executor.images);executor.images=[]
-                        if executor.calls>=TOOL_BUDGET or attempt>=rounds-2:
+                        if executor.calls>=TOOL_BUDGET or executor.repeats>=4 or attempt>=rounds-2:
                             finishing=True
                             wire.final_note(cfg,messages,'Tool budget for this reply is used up. Do not call any more tools. Write your final answer now from what you have found, '
                                                          'and say plainly what you could not check or read.')
@@ -234,8 +241,9 @@ class APIBackend:
             while not cancel.is_set(): await asyncio.sleep(.025)
         request=asyncio.create_task(work()); stopped=asyncio.create_task(cancellation())
         try:
-            done,_=await asyncio.wait([request,stopped],timeout=cfg['timeout'],return_when=asyncio.FIRST_COMPLETED)
-            if stopped in done or not done: raise TimeoutError('API cancelled or total deadline reached')
+            done,_=await asyncio.wait([request,stopped],timeout=deadline or None,return_when=asyncio.FIRST_COMPLETED)
+            if stopped in done: raise TimeoutError('API cancelled')
+            if not done: raise TimeoutError('Reply time limit reached ('+str(round(deadline/60))+' min)')
             return request.result()
         except (httpx.HTTPError,KeyError,IndexError,TypeError,json.JSONDecodeError) as exc:
             # Never persist provider error bodies, URLs, headers or raw exception text: only a fixed stage label.

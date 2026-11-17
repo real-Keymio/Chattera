@@ -172,5 +172,34 @@ def library_view_page(item_id: str, page: int = 1):
     return [text, Image(data=base64.b64decode(shots[0]["data"]), format="png")]
 
 
+@mcp.tool()
+def workspace_list() -> str:
+    """List the files in this chat's folder (kept by you and other participants for this chat)."""
+    if not snapshot.get("workspace"): return "This chat has no chat folder in this reply."
+    return shared("workspace_list", {})
+
+
+@mcp.tool()
+def workspace_read(path: str, offset: int = 0) -> str:
+    """Read a file from this chat's folder (text, Markdown, CSV, JSON or PDF). offset continues a long file."""
+    if not snapshot.get("workspace"): return "This chat has no chat folder in this reply."
+    return shared("workspace_read", dict(path=path, offset=offset))
+
+
+@mcp.tool()
+def workspace_write(path: str, content: str, append: bool = False) -> str:
+    """Write a text file (.md, .txt, .csv, .json, .bib...) into this chat's folder: notes, tables, drafts. append=true adds to the end. The user can open these files."""
+    if not snapshot.get("workspace"): return "This chat has no chat folder in this reply."
+    return shared("workspace_write", dict(path=path, content=content, append=append))
+
+
+@mcp.tool()
+def workspace_download(url: str, path: str) -> str:
+    """Download a file (e.g. an open-access PDF or a dataset) from an HTTPS URL into this chat's folder, to read later with workspace_read."""
+    if not snapshot.get("workspace"): return "This chat has no chat folder in this reply."
+    if not snapshot.get("research_allowed", False): return "Downloads are off in private context."
+    return shared("workspace_download", dict(url=url, path=path))
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

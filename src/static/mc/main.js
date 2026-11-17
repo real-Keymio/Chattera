@@ -20,7 +20,7 @@ function renderStage() {
     const sub = document.getElementById('room-sub');
     const lens = room?.lens ? lensOf(room.lens) : null, pins = room?.pins?.length || 0;
     sub.replaceChildren(...(room ? [
-        h('button', { title: t('研究视角（点击修改）'), onclick: () => emit('panel', { tab: 'discussion' }) }, lens ? lens.name : t('开放科学讨论')),
+        h('button', { title: t('分析框架（点击修改）'), onclick: () => emit('panel', { tab: 'discussion' }) }, lens ? lens.name : t('开放科学讨论')),
         h('button', { title: t('上下文容量档位（点击修改）'), onclick: () => emit('panel', { tab: 'context' }) }, t('上下文 ') + (CONTEXT[room.context_mode] || room.context_mode || '256K')),
         room.forked_from ? h('span', { title: t('从“{0}”的 #{1} 分支', room.forked_from.room_name || '', room.forked_from.message_id) }, t('分支')) : null,
     ].filter(Boolean) : []));

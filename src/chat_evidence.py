@@ -243,7 +243,7 @@ class Evidence:
 
     def _pdf(self, body):
         if not self.attachments: raise ValueError('PDF reading unavailable')
-        self.cache.mkdir(exist_ok=True)
+        self.cache.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256(body).hexdigest()
         parsed = self.cache / (digest + '.json')
         if not parsed.exists():

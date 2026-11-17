@@ -981,3 +981,10 @@ body.cv-carrying, body.cv-carrying * { cursor: grabbing !important; user-select:
 .caps-row .link { font-size: .95em; }
 .test-result .fix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); color: var(--ink-1, var(--ink)); }
 .compat .field, .compat .radio { margin-top: 4px; }
+
+/* Files a reply saved in the chat folder, and the live step count of a running reply. */
+.msg-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 2px; font-size: .82em; }
+.msg-files-head { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); }
+.file-chip { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); text-decoration: none; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip:hover { border-color: var(--accent); color: var(--ink); }
+.pending .steps { font-size: .8em; color: var(--ink-3); font-variant-numeric: tabular-nums; }

@@ -13,6 +13,18 @@
   emptied in one step. Everything recorded only for that chat goes with it: messages and versions, attachments and their
   parse cache, reply records, summaries, automatic memory, shared-retrieval bundles, canvas and research library. Cached
   library files are removed only when no other chat uses them.
+- **Replies pace themselves, as in a web chat.** There is no fixed number of searches or reads: a model works until it
+  has enough, then answers. What bounds a reply is its time limit (Settings → Search & tools → *Longest time per reply*:
+  10 min to 2 h, or no limit; 30 min by default) and your stop button. Near the limit API models are asked to finish with
+  what they have; a model repeating the same call is answered from the first result and then asked to finish.
+  A running reply shows how many steps it has taken.
+- **Research agent** (on by default, Settings → Search & tools): Claude Code and Codex use their own web search for
+  messages everyone can see, and every chat has a **chat folder** where participants keep notes, tables and downloaded
+  open-access papers (`workspace_list / read / write / download`). Files a reply saved are listed under it and open in
+  a new tab; Room settings → *Open chat folder*. The folder lives in the library folder (so it syncs when the library is in
+  a cloud folder) and is deleted with the chat. Models cannot run commands or reach anything outside the folder.
+- **Clearer words in the message box.** *Analysis framework* (was “lens”), *Everyone can see / Only X can see* (was
+  “public”), *Answers visible / Blind answers* (was “discussion / independent”), each with a short explanation.
 - **Room to work.** Limits sized for long research rather than quick chats:
   - tool calls per reply: 60 search/read calls (was 8) and 80 library calls; up to 20 request rounds on tool-enabled API connections;
   - one read returns 20,000 characters of a page or paper (was 5,200); searches return up to 20 results with abstracts up to 3,000 characters;

@@ -38,6 +38,9 @@ class ChatRuntime:
         self.place_caches()
         self.builder.evidence = self.evidence
         self.builder.lens_for = self.lens_for
+        import chat_files
+        self.builder.agent_settings = self.registry.search_settings
+        self.builder.files_folder = lambda channel: chat_files.folder_for(self, self.rooms.get(channel))
         upload_dir = str(self.attachments.upload)
         def retrieval_info():
             search = self.registry.search_settings()
@@ -441,6 +444,8 @@ def install(app_module, data_dir):
     install_library(runtime, app_module, data_dir)
     from chattera_workspace import install as install_workspace
     install_workspace(runtime, app_module, data_dir)
+    from chat_files import install as install_files
+    install_files(runtime, app_module)
     from chattera_delete import install as install_delete
     install_delete(runtime, app_module, data_dir)
     from chattera_setup import install as install_setup

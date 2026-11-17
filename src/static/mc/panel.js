@@ -51,7 +51,7 @@ async function discussion(room, box) {
     const about = h('p', { class: 'hint' });
     const describe = () => { const lens = lensOf(shared.value); about.textContent = lens?.summary || ''; };
     shared.addEventListener('change', async () => {
-        try { await roomApi(room, '/lens', { lens: shared.value }); await refreshRooms(); toast(t('房间的研究视角已更新')); } catch (e) { toast(e.message, 'error'); }
+        try { await roomApi(room, '/lens', { lens: shared.value }); await refreshRooms(); toast(t('房间的分析框架已更新')); } catch (e) { toast(e.message, 'error'); }
         describe();
     });
     describe();
@@ -66,10 +66,10 @@ async function discussion(room, box) {
         return h('div', { class: 'who-row' }, h('label', null, sigil(id, 'xs'), label(id)), h('div', { class: 'inline' }, pick,
             h('button', { class: 'btn small', title: t('查看 {0} 在这个聊天里实际收到的固定说明', label(id)), onclick: () => effectivePrompt(room, id) }, t('查看'))));
     });
-    box.append(section(t('研究视角'), h('label', { class: 'field' }, t('所有参与者共用'), shared), about,
+    box.append(section(t('分析框架'), h('label', { class: 'field' }, t('所有参与者共用'), shared), about,
         h('details', null, h('summary', null, t('让不同参与者使用不同视角')), rows,
             h('p', { class: 'hint' }, t('例如同一篇论文让 Claude 看研究设计、Codex 看统计推断。这只是这个聊天里的分工，随时可以改；单次提问还可以在输入区临时换视角。'))),
-        h('p', { class: 'hint' }, t('视角是分析方法，不预设结论，也不要求固定的回答格式。新增或修改视角：设置 → 研究视角。'))));
+        h('p', { class: 'hint' }, t('分析框架是分析方法，不预设结论，也不要求固定的回答格式。新增或修改框架：设置 → 分析框架。'))));
 
     const pins = room.pins || [];
     box.append(section(t('固定内容（{0}）', pins.length),
@@ -95,6 +95,7 @@ async function discussion(room, box) {
             h('dt', null, t('固定 ID')), h('dd', null, h('code', null, room.id))),
         h('div', { class: 'card-actions' }, h('button', { class: 'btn', onclick: () => renameRoom(room) }, t('重命名')),
             h('button', { class: 'btn', onclick: () => archiveRoom(room) }, t('归档')),
+            h('button', { class: 'btn', title: t('参与者在这个聊天里保存的笔记、表格和下载的论文'), onclick: () => api(`/api/chat/rooms/${room.id}/files/open`, {}).catch(e => toast(e.message, 'error')) }, t('打开聊天文件夹')),
             h('button', { class: 'btn danger', onclick: () => deleteRoom(room) }, t('永久删除…'))),
         h('p', { class: 'hint' }, t('重命名只改变显示名称。归档会隐藏聊天并停止生成，可随时恢复。永久删除会清除这个聊天的全部数据，无法恢复；从它建立的分支是独立副本，不受影响。'))));
 }
@@ -105,7 +106,7 @@ async function effectivePrompt(room, id) {
         const value = await api(`/api/chat/rooms/${room.id}/effective-prompt?model=${id}`);
         dialog.body.replaceChildren(
             h('h4', { class: 'mat-sec' }, t('身份与讨论方式（所有聊天相同）')), h('div', { class: 'lens-method' }, value.identity),
-            h('h4', { class: 'mat-sec', style: { marginTop: '14px' } }, t('研究视角')), value.lens ? h('div', { class: 'lens-method' }, t('【{0}】\n', value.lens.name) + value.lens.method) : h('p', { class: 'hint' }, t('开放科学讨论：不附加额外的方法说明。')),
+            h('h4', { class: 'mat-sec', style: { marginTop: '14px' } }, t('分析框架')), value.lens ? h('div', { class: 'lens-method' }, t('【{0}】\n', value.lens.name) + value.lens.method) : h('p', { class: 'hint' }, t('开放科学讨论：不附加额外的方法说明。')),
             value.pins?.length ? [h('h4', { class: 'mat-sec', style: { marginTop: '14px' } }, t('固定内容')), h('div', { class: 'lens-method' }, value.pins.map(p => '· ' + p.text).join('\n'))] : null,
             (value.global_rules?.rules || []).length ? [h('h4', { class: 'mat-sec', style: { marginTop: '14px' } }, t('全局规则')), h('div', { class: 'lens-method' }, value.global_rules.rules.map(r => '· ' + (r.text || r)).join('\n'))] : null,
             h('p', { class: 'hint' }, t('除此之外，每次提问还会带上当时的历史、摘要、附件和检索资料；单次提问临时选择的视角不在这里显示，可在回答下方的“依据”里看到。')));
@@ -219,7 +220,7 @@ async function calls(room, box) {
         const range = v => Array.isArray(v) ? (v.length ? v.map(r => Array.isArray(r) ? r.join('–') : r).join(', ') : t('无')) : u(v);
         const rows = [
             [t('针对提问'), `#${task.current_id}`], [t('可见范围'), task.visibility === 'public' || !task.visibility ? t('公开') : task.visibility.map(label).join(t('、'))],
-            [t('回答方式'), { normal: t('独立回答'), strict: t('严格独立') }[task.independent_mode] || t('普通讨论')], [t('连接'), task.backend], [t('研究视角'), task.research_lens?.name || t('开放科学讨论')],
+            [t('模型之间'), { normal: t('背靠背回答'), strict: t('严格背靠背') }[task.independent_mode] || t('回答互相可见')], [t('连接'), task.backend], [t('分析框架'), task.research_lens?.name || t('开放科学讨论')],
             [t('请求模型 / effort'), `${u(task.requested_model)} / ${u(task.requested_effort)}`], [t('服务端实际模型'), u(task.actual_model)],
             [t('输入估算 / 容量'), `${fmtNum(task.input_estimate)} / ${fmtNum(task.budget)} ${task.budget_unit || 'bytes'}`],
             [t('文字 UTF-8 字节'), fmtNum(task.input_bytes)], [t('摘要版本'), u(task.summary_version)],

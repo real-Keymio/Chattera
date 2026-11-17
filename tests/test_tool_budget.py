@@ -32,16 +32,17 @@ def greedy(seen):
         body = json.loads(request.content); seen.append(body)
         if body.get('tool_choice') == 'none':
             return httpx.Response(200, json={'model': 'm', 'choices': [{'finish_reason': 'stop', 'message': {'role': 'assistant', 'content': 'final answer'}}]})
-        calls = [{'id': f'c{len(seen)}-{i}', 'type': 'function', 'function': {'name': 'chat_search', 'arguments': json.dumps({'query': 'q'})}} for i in range(6)]
+        calls = [{'id': f'c{len(seen)}-{i}', 'type': 'function', 'function': {'name': 'chat_search', 'arguments': json.dumps({'query': f'q{len(seen)}-{i}'})}} for i in range(6)]
         return httpx.Response(200, json={'model': 'm', 'choices': [{'finish_reason': 'tool_calls', 'message': {'role': 'assistant', 'content': None, 'tool_calls': calls}}]})
     return handler
 
 
 def test_spent_budget_ends_with_an_answer(tmp_path, monkeypatch):
+    monkeypatch.setattr('chat_tools.TOOL_BUDGET', 24)
     seen = []
     result = run(tmp_path, monkeypatch, greedy(seen))
     assert result['text'] == 'final answer'
-    assert len(result['tool_calls']) == TOOL_BUDGET  # 4 rounds of 6 parallel calls, all run
+    assert len(result['tool_calls']) == 24  # 4 rounds of 6 parallel calls, all run
     assert seen[-1]['tool_choice'] == 'none' and 'tools' in seen[-1]
     assert 'Tool budget for this reply is used up' in seen[-1]['messages'][-1]['content']
     assert all('tool_choice' not in body for body in seen[:-1])
@@ -53,6 +54,19 @@ def test_last_round_ends_with_an_answer(tmp_path, monkeypatch):
     seen = []
     result = run(tmp_path, monkeypatch, greedy(seen), max_requests_per_task=3)
     assert result['text'] == 'final answer' and len(seen) == 4 and seen[-1]['tool_choice'] == 'none'
+
+
+def test_going_round_in_circles_ends_with_an_answer(tmp_path, monkeypatch):
+    """The same call with the same arguments, again and again: answered from the first result, then the model is asked to finish."""
+    seen = []
+    def handler(request):
+        body = json.loads(request.content); seen.append(body)
+        if body.get('tool_choice') == 'none':
+            return httpx.Response(200, json={'model': 'm', 'choices': [{'finish_reason': 'stop', 'message': {'role': 'assistant', 'content': 'done'}}]})
+        call = {'id': f'c{len(seen)}', 'type': 'function', 'function': {'name': 'chat_search', 'arguments': json.dumps({'query': 'same'})}}
+        return httpx.Response(200, json={'model': 'm', 'choices': [{'finish_reason': 'tool_calls', 'message': {'role': 'assistant', 'content': None, 'tool_calls': [call]}}]})
+    result = run(tmp_path, monkeypatch, handler)
+    assert result['text'] == 'done' and len(seen) == 7   # 2 real calls, 4 refused repeats, then the final request
 
 
 @pytest.mark.parametrize('protocol,check', [

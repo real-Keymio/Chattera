@@ -207,6 +207,13 @@ class TaskManager:
                 if search_mode:
                     from chat_search import plan
                     snapshot['search'] = plan(backend, effective_cfg, caps['tools'], bool(snapshot.get('research_allowed')), search_mode)
+                pacing = self.builder.agent_settings() if getattr(self.builder, 'agent_settings', None) else {}
+                if pacing.get('agent'):
+                    # Research agent: the chat folder for notes and downloads, and (for subscription CLIs) their own web search.
+                    snapshot['agent'] = True
+                    if getattr(self.builder, 'files_folder', None):
+                        try: snapshot['workspace'] = dict(path=str(self.builder.files_folder(channel)))
+                        except (OSError, ValueError): pass
                 if getattr(self.builder, 'lens_for', None):
                     lens = self.builder.lens_for(channel, model, current)
                     if lens: snapshot['research_lens'] = lens
@@ -261,11 +268,15 @@ class TaskManager:
             if snapshot.get('search'): task['search'] = snapshot['search']
             if snapshot.get('library'): task['library_tag'] = snapshot['library'].get('task_tag')
             task['_effective_config']=effective_cfg
+            if getattr(self.builder, 'agent_settings', None):   # without it (embedded use, tests) the connection's timeout applies
+                minutes = self.builder.agent_settings().get('reply_minutes', 30)
+                task['_deadline_seconds'] = minutes * 60 if minutes else None   # None: until the model is done or the user stops it
+                task['time_limit_minutes'] = minutes or 'none'
             task['requested_model']=effective_cfg.get('model','UNKNOWN')
             task['requested_effort']=task['effort']
             task['requested_thinking']=effective_cfg.get('thinking')
-            task["configuration"] = redact(dict(effective_cfg, max_tool_calls=__import__('chat_tools').TOOL_BUDGET,
-                                          tool_result_chars=6500, output_capture_bytes=2000000))
+            task["configuration"] = redact(dict(effective_cfg, tool_call_guard=__import__('chat_tools').TOOL_BUDGET,
+                                          tool_result_chars=__import__('chat_tools').RESULT_CHARS, output_capture_bytes=64_000_000))
             task["input_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
             self.tasks[task_id] = task
             self.active[key] = task_id
@@ -302,6 +313,14 @@ class TaskManager:
                     task["activity"] = dict(kind=entry['kind'], text=str(entry.get('query') or ' · '.join(entry.get('queries') or []) or entry.get('url') or '')[:200], at=entry.get('at'))
                     self.record(task)
         attach.search = searching
+        def step(count=1):
+            # Live count of tool calls for the interface ("37 steps"); recorded at most every 1.5 s.
+            with self.lock:
+                if task['state'] != 'running': return
+                task['steps'] = task.get('steps', 0) + count
+                if time.time() - task.get('_steps_recorded', 0) > 1.5:
+                    task['_steps_recorded'] = time.time(); self.record(task)
+        attach.step = step
         try:
             runner=self.backends[task['backend']]
             if isinstance(runner,CLIBackend):
@@ -339,6 +358,11 @@ class TaskManager:
                             try: events.append(json.loads(line))
                             except ValueError: pass
                     task['search_summary'] = summary(list(task.get('search_trace') or []) + from_tool_events(e for e in events if e.get('status') != 'started'))
+                try:
+                    import chat_files
+                    saved = chat_files.written(task['directory'])
+                    if saved: task['workspace_files'] = saved
+                except OSError: pass
                 if getattr(self.builder, 'library_ingest', None):
                     try: self.builder.library_ingest(task, text, reply['id'])
                     except Exception as exc: task['library_error'] = type(exc).__name__ + ': ' + str(exc)[:160]

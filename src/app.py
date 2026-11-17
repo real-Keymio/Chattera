@@ -158,7 +158,9 @@ def _install_security_middleware(token: str, cfg: dict):
                 if path in pages:
                     response.set_cookie('room_session', token, httponly=True, samesite='strict')
                 return response
-            if path.startswith('/uploads/') and request.cookies.get('room_session') == token:
+            # Files opened in a new tab (uploads, chat-folder files) carry the page's session cookie instead of the header.
+            files = path.startswith('/api/chat/rooms/') and path.endswith('/files/raw') and request.method == 'GET'
+            if (path.startswith('/uploads/') or files) and request.cookies.get('room_session') == token:
                 return await call_next(request)
 
             # --- Origin check (blocks cross-origin / DNS-rebinding attacks) ---

@@ -207,10 +207,10 @@ function audienceMenu(anchor) {
     const reopen = () => audienceMenu(anchor);
     const custom = new Set(d.audience === 'custom' ? d.custom : chosenIds(d));
     menu(anchor, [
-        { title: t('谁可以看到这条消息') },
-        { label: t('公开'), note: t('所有模型之后都可读取（默认）'), checked: d.audience === 'public', action: () => { d.audience = 'public'; d.error = ''; sync(); } },
-        { label: t('仅回答者可见'), note: t('私聊：只有本次选中的回答者可读'), checked: d.audience === 'targets', action: () => { d.audience = 'targets'; d.error = ''; sync(); } },
-        'sep', { title: t('或指定可见的模型') },
+        { title: t('这条提问给谁看') },
+        { label: t('全员可见'), note: t('所有模型现在和之后都能读到（默认）'), checked: d.audience === 'public', action: () => { d.audience = 'public'; d.error = ''; sync(); } },
+        { label: t('只给回答者看'), note: t('私聊：只有这次被点名的模型能读到'), checked: d.audience === 'targets', action: () => { d.audience = 'targets'; d.error = ''; sync(); } },
+        'sep', { title: t('或指定能看到的模型') },
         ...IDS.map(id => ({
             label: label(id), checked: d.audience === 'custom' && custom.has(id), keepOpen: true,
             action: () => {
@@ -218,7 +218,7 @@ function audienceMenu(anchor) {
                 d.audience = 'custom'; d.custom = IDS.filter(x => custom.has(x)); d.error = ''; sync(); reopen();
             },
         })),
-        'sep', { node: h('p', { class: 'menu-help' }, t('回答者 ≠ 可见范围：只让 Claude 回答一条公开消息，其他模型之后仍可读到它。私聊发送成功后，下一条自动恢复公开。')) },
+        'sep', { node: h('p', { class: 'menu-help' }, t('“谁来回答”和“谁能看到”是两回事：只点名 Claude 回答一条全员可见的提问，其他模型之后仍能读到它。私聊发出后，下一条自动恢复全员可见。')) },
     ]);
 }
 
@@ -226,12 +226,12 @@ function modeMenu(anchor) {
     const d = draft();
     const set = value => () => { d.mode = value; d.error = ''; sync(); };
     menu(anchor, [
-        { title: t('回答方式（仅本次发送）') },
-        { label: t('普通讨论'), note: t('回答公开，后续可互相讨论（默认）'), checked: d.mode === '', action: set('') },
-        { label: t('独立回答'), note: t('各模型互不可见；由你确认后再公开'), checked: d.mode === 'normal', action: set('normal') },
+        { title: t('模型之间能不能看到彼此的回答（仅这次提问）') },
+        { label: t('互相可见'), note: t('回答直接公开，之后可以互相讨论（默认）'), checked: d.mode === '', action: set('') },
+        { label: t('背靠背回答'), note: t('彼此看不到；你确认后再公开'), checked: d.mode === 'normal', action: set('normal') },
         'sep', { title: t('高级') },
-        { label: t('严格独立'), note: t('同上，且不带入任何既往私聊'), checked: d.mode === 'strict', action: set('strict') },
-        'sep', { node: h('p', { class: 'menu-help' }, t('同一条消息点名多个模型时，它们总是并发回答、互相看不到本轮答案；要让模型互评，在回答上点“请回应”即可。')) },
+        { label: t('严格背靠背'), note: t('同上，且不带入之前的任何私聊'), checked: d.mode === 'strict', action: set('strict') },
+        'sep', { node: h('p', { class: 'menu-help' }, t('同一条提问点名多位模型时，它们总是同时作答、看不到本轮彼此的答案；区别在答完之后：“互相可见”立即公开，“背靠背”等你确认后才公开。要让模型互评，在回答上点“请回应”。')) },
     ]);
 }
 
@@ -264,11 +264,11 @@ function lensMenu(anchor) {
     const shared = lensOf(room?.lens || 'open');
     const per = Object.entries(room?.lens_by_model || {}).map(([id, lens]) => t('{0}：{1}', label(id), lensOf(lens)?.name || lens));
     menu(anchor, [
-        { title: t('研究视角（仅本次发送，应用于所有回答者）') },
+        { title: t('分析框架（这次提问的思考角度，所有回答者通用）') },
         { label: t('沿用房间设置'), note: (shared?.name || t('开放科学讨论')) + (per.length ? t(' · 另有按模型的设置') : ''), checked: !d.lens, action: () => { d.lens = null; sync(); } },
         'sep',
         ...lenses.map(lens => ({ label: lens.name, hint: lens.summary || '', checked: d.lens === lens.id, action: () => { d.lens = lens.id; sync(); } })),
-        'sep', { node: h('p', { class: 'menu-help' }, t('视角是分析方法，不是结论，也不要求固定的回答格式。要让不同模型用不同视角、或查看实际生效的内容，请打开房间 → 讨论。')) },
+        'sep', { node: h('p', { class: 'menu-help' }, t('分析框架决定从哪些角度分析问题，不决定结论，也不限定回答格式。要让不同模型用不同框架、或查看实际生效的内容，请打开房间设置 → 讨论。')) },
     ]);
 }
 
@@ -387,7 +387,7 @@ function sync(resetInput = false) {
         ctx.push(h('div', { class: 'c-private' }, icon(ICONS.lock, 13),
             visible.length ? t('私聊：{0}。其他模型读不到这条消息及其回答；发送成功后恢复公开。', audienceText(visible)) : t('私聊：尚未选择可见的模型。')));
     }
-    if (d.mode) ctx.push(h('div', { class: 'c-private indep' }, d.mode === 'strict' ? t('严格独立回答：各模型互不可见，且不带入既往私聊；答案由你确认后才公开。') : t('独立回答：各模型互不可见；答案由你确认后才公开。')));
+    if (d.mode) ctx.push(h('div', { class: 'c-private indep' }, d.mode === 'strict' ? t('严格背靠背：模型之间看不到彼此的回答，也不带入之前的私聊；你确认后才公开。') : t('背靠背回答：模型之间看不到彼此的回答；你确认后才公开。')));
     const issues = room ? problems() : [];
     const filled = d.text.trim() || d.attachments.length;
     const text = d.error || (filled ? issues[0] : '') || '';
@@ -418,11 +418,11 @@ function sync(resetInput = false) {
     els.search.dataset.mode = d.search.mode;
     const lens = d.lens ? lensOf(d.lens) : null, roomLens = room?.lens ? lensOf(room.lens) : null;
     els.lens.classList.toggle('on', Boolean(d.lens));
-    els.lens.replaceChildren(icon(ICONS.lens, 14), lens ? lens.name : roomLens ? roomLens.name : t('视角'));
-    els.lens.title = t('研究视角：') + (lens ? t('本次使用“{0}”', lens.name) : t('沿用房间设置（{0}）', roomLens?.name || t('开放科学讨论')));
-    els.audience.replaceChildren(icon(visible === 'public' ? ICONS.eye : ICONS.lock, 14), visible === 'public' ? t('公开') : (visible.length ? t('仅 ') + names(visible) : t('私聊')));
+    els.lens.replaceChildren(icon(ICONS.lens, 14), lens ? lens.name : roomLens ? roomLens.name : t('分析框架'));
+    els.lens.title = t('分析框架：') + (lens ? t('这次使用“{0}”', lens.name) : t('沿用房间设置（{0}）', roomLens?.name || t('开放科学讨论')));
+    els.audience.replaceChildren(icon(visible === 'public' ? ICONS.eye : ICONS.lock, 14), visible === 'public' ? t('全员可见') : (visible.length ? t('仅 {0} 可见', names(visible)) : t('私聊：未选可见者')));
     els.audience.classList.toggle('on', visible !== 'public');
-    els.mode.replaceChildren(d.mode === 'strict' ? t('严格独立') : d.mode === 'normal' ? t('独立回答') : t('讨论'));
+    els.mode.replaceChildren(d.mode === 'strict' ? t('严格背靠背') : d.mode === 'normal' ? t('背靠背回答') : t('回答互相可见'));
     els.mode.classList.toggle('on', Boolean(d.mode));
     els.overrides.classList.toggle('on', overrideCount > 0);
     els.overrides.title = overrideCount ? t('本次模型设置（{0} 个模型已调整）', overrideCount) : t('本次使用的模型与推理强度');
@@ -454,8 +454,8 @@ export function initComposer() {
     els.attach = h('button', { class: 'icon-btn', title: t('添加图片或文档（也可粘贴、拖入）\n图片：PNG / JPEG / WebP\n文档：PDF、DOCX、TXT、MD、RTF、HTML、CSV、JSON、XML、TeX'), 'aria-label': t('添加附件'), onclick: () => els.file.click() }, icon(ICONS.clip, 18));
     els.search = h('button', { class: 'pill', title: t('联网：让模型各自搜索、共享同一份检索资料，或两者结合'), onclick: event => { const d = draft(); if (!d.search.mode) { d.search.mode = 'independent'; d.error = ''; sync(); } webMenu(event.currentTarget); } });
     els.lens = h('button', { class: 'pill', onclick: event => lensMenu(event.currentTarget) });
-    els.audience = h('button', { class: 'pill', title: t('谁可以看到这条消息'), onclick: event => audienceMenu(event.currentTarget) });
-    els.mode = h('button', { class: 'pill', title: t('回答方式：普通讨论 / 独立回答'), onclick: event => modeMenu(event.currentTarget) });
+    els.audience = h('button', { class: 'pill', title: t('这条提问给谁看'), onclick: event => audienceMenu(event.currentTarget) });
+    els.mode = h('button', { class: 'pill', title: t('模型之间能不能看到彼此的回答'), onclick: event => modeMenu(event.currentTarget) });
     els.overrides = h('button', { class: 'icon-btn', 'aria-label': t('本次模型设置'), onclick: event => overridesMenu(event.currentTarget) }, icon(ICONS.cpu, 17));
     els.stop = h('button', { class: 'btn stop', hidden: true, onclick: () => stopTask(activeRoom()) }, icon(ICONS.stop, 12), t('停止'));
     els.send = h('button', { class: 'send', 'aria-label': t('发送'), onclick: send }, icon(ICONS.send, 18));

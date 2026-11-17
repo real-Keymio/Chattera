@@ -111,7 +111,7 @@ const EXPLAIN = [
     [/API backend disabled or key unavailable/, t('这个连接已停用，或还没有保存密钥。')],
     [/API cumulative request cap reached/, t('这个连接已达到你设置的累计请求上限。可在连接的高级设置里调高或取消上限。')],
     [/Retrieved evidence does not fit/, t('检索到的资料放不进这个模型的输入容量。可在房间设置 → 上下文调大容量，或关闭检索后重试。')],
-    [/Unknown research lens/, t('所选研究视角不存在，可能已被删除。请重新选择。')],
+    [/Unknown research lens/, t('所选分析框架不存在，可能已被删除。请重新选择。')],
     [/Invalid API key format/, t('Key 格式不正确：至少 8 个字符，且不能包含空白。')],
     [/Explicit provider model ID required/, t('需要填写模型 ID。')],
     [/API requires HTTPS|base URL must not contain/, t('服务地址需为 https:// 开头，且不含账号、查询参数。')],

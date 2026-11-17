@@ -65,7 +65,7 @@ async function tools(box) {
     const s = S.models?.search || {}, profiles = S.models?.profiles || [];
     const save = async body => { try { S.models = await api('/api/chat/search-settings', body); rerender(); } catch (e) { toast(e.message, 'error'); } };
     const provider = h('select', { class: 'input' }, [['duckduckgo', t('DuckDuckGo（无需 Key）')], ['tavily', t('Tavily（需要 Key）')], ['brave', t('Brave Search（需要 Key）')]]
-        .map(([v, t]) => h('option', { value: v, selected: s.web_provider === v }, t)));
+        .map(([v, text]) => h('option', { value: v, selected: s.web_provider === v }, text)));
     provider.addEventListener('change', () => save({ web_provider: provider.value }));
     const keyRow = (name, title, present, note) => {
         const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', placeholder: present ? t('粘贴新的 Key 以替换') : t('粘贴 Key') });
@@ -76,7 +76,7 @@ async function tools(box) {
         } }), present ? h('button', { class: 'btn', onclick: async () => { S.models = await api(`/api/chat/profiles/${name}/key`, undefined, 'DELETE'); rerender(); } }, t('移除')) : null));
     };
     const planner = h('select', { class: 'input' }, [['auto', t('自动（当前：{0}）', s.planner_effective ? connectionName(s.planner_effective) : t('没有可用的 API 连接'))], ['off', t('关闭：直接用问题原文检索')],
-        ...profiles.filter(p => p.kind === 'api').map(p => [p.name, connectionName(p.name) + ' · ' + p.model])].map(([v, t]) => h('option', { value: v, selected: (s.planner || 'auto') === v }, t)));
+        ...profiles.filter(p => p.kind === 'api').map(p => [p.name, connectionName(p.name) + ' · ' + p.model])].map(([v, text]) => h('option', { value: v, selected: (s.planner || 'auto') === v }, text)));
     planner.addEventListener('change', () => save({ planner: planner.value }));
     const reader = h('input', { type: 'checkbox', checked: s.reader_fallback !== false, onchange: event => save({ reader_fallback: event.target.checked }) });
     const query = h('input', { class: 'input', placeholder: t('输入检索词试一下'), value: '' }), out = h('div');
@@ -131,8 +131,8 @@ function look(box) {
 // ---------- general ----------
 function general(box) {
     const name = h('input', { class: 'input', value: S.username, maxLength: 20 });
-    const history = h('select', { class: 'input' }, [['all', t('全部（每个聊天最多 10000 条）')], ['500', t('最近 500 条')], ['200', t('最近 200 条')]].map(([v, t]) =>
-        h('option', { value: v, selected: String(S.settings.history_limit ?? 'all') === v }, t)));
+    const history = h('select', { class: 'input' }, [['all', t('全部（每个聊天最多 10000 条）')], ['500', t('最近 500 条')], ['200', t('最近 200 条')]].map(([v, text]) =>
+        h('option', { value: v, selected: String(S.settings.history_limit ?? 'all') === v }, text)));
     history.addEventListener('change', () => { sendRaw({ type: 'update_settings', data: { history_limit: history.value } }); toast(t('已保存，刷新页面后生效')); });
     // Language names are written in their own language so either can find the other.
     const language = h('select', { class: 'input', 'aria-label': 'Language' },
@@ -197,7 +197,7 @@ async function diagnostics(box) {
     const AUTH = { 'signed-in': t('已登录'), 'signed-out': t('未登录'), UNKNOWN: t('未知') };
     const scan = () => api('/api/chattera/cli-scan').then(value => {
         const paths = h('textarea', { class: 'input', rows: 3, placeholder: t('每行一个文件夹，例如 D:\\Tools\\claude'), value: (value.extra_paths || []).join('\n') });
-        clis.replaceChildren(h('table', { class: 'grid' }, h('thead', null, h('tr', null, ['CLI', t('状态'), t('登录'), t('版本'), t('位置 / 说明')].map(t => h('th', null, t)))),
+        clis.replaceChildren(h('table', { class: 'grid' }, h('thead', null, h('tr', null, ['CLI', t('状态'), t('登录'), t('版本'), t('位置 / 说明')].map(head => h('th', null, head)))),
             h('tbody', null, value.clis.map(c => h('tr', null, h('td', null, c.label),
                 h('td', null, h('span', { class: 'cap ' + (c.usable ? 'yes' : c.discovered ? 'warn' : '') }, c.usable ? t('可以聊天') : c.adapted && c.discovered ? t('已适配') : c.discovered ? t('已发现') : t('未找到'))),
                 h('td', null, c.auth ? h('span', { title: t('来自官方状态命令：') + c.auth.source }, AUTH[c.auth.status] || t('未知'), c.auth.method ? ` · ${c.auth.method}` : '') : '—'),
@@ -214,7 +214,7 @@ async function diagnostics(box) {
         h('dt', null, t('聊天数')), h('dd', null, t('{0} 个进行中，{1} 个已归档', S.rooms.filter(r => !r.archived).length, S.rooms.filter(r => r.archived).length)),
         h('dt', null, t('已加载消息')), h('dd', null, fmtNum(S.msgs.size)))),
         group(t('各连接的调用记录'), Object.keys(proof).length ? h('table', { class: 'grid' },
-            h('thead', null, h('tr', null, [t('连接'), t('成功'), t('失败'), t('最近成功'), t('最近失败原因')].map(t => h('th', null, t)))),
+            h('thead', null, h('tr', null, [t('连接'), t('成功'), t('失败'), t('最近成功'), t('最近失败原因')].map(head => h('th', null, head)))),
             h('tbody', null, Object.entries(proof).map(([name, v]) => h('tr', null, h('td', null, connectionName(name)), h('td', { class: 'num' }, v.completed), h('td', { class: 'num' }, v.failed),
                 h('td', null, v.last_success_at ? fmtTime(v.last_success_at) : '—'), h('td', null, v.last_failure_reason && (!v.last_success_at || v.last_failure_at > v.last_success_at) ? friendlyReason(v.last_failure_reason) : '—')))))
             : h('p', { class: 'hint' }, t('还没有调用记录。')),

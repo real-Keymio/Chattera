@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2 — Easier model settings, clearer errors
+
+- **Model settings in plain sight.** Each model in Settings → Models & services now shows switches for tool calls and
+  image input, its reasoning-effort levels and its context window, instead of hiding them in an edit dialog.
+- **Compatibility section** on every API connection, with the settings providers differ on: the output-limit
+  parameter (`max_tokens` or `max_completion_tokens` for newer OpenAI models), the reasoning-effort parameter, the
+  Anthropic workspace ID (`anthropic-workspace-id`, for keys not scoped to a workspace) and Bearer auth for Google.
+- **Failed tests explain themselves.** A connection test that fails for a known reason says which setting fixes it,
+  and offers the fix where it can (for example “Use max_completion_tokens and retry”).
+- **Clearer errors.** A failed model listing shows the provider's own message; a subscription CLI that exits with an
+  error shows what it said, and a sign-in problem is named as one.
+- **Claude Code detection.** Standalone installs are preferred; the copy bundled with the Claude desktop app is the
+  fallback, and a connection whose executable moved after an app update is found again at start-up.
+- **Fix:** the reasoning-effort picker in model settings failed with “t is not a function” in 0.1.1.
+
 ## 0.1.1 — English interface
 
 - **English and Chinese interface.** Chattera follows the Windows display language; switch any time in

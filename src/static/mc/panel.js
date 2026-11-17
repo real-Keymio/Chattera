@@ -125,7 +125,7 @@ async function context(room, box) {
     const load = async () => {
         const cap = await roomApi(room, '/context-capacity');
         table.replaceChildren(h('p', { class: 'hint' }, t('所选上限：{0} Token。下表是每个模型实际生效的可控输入容量。', fmtNum(cap.selected_limit_tokens))),
-            h('table', { class: 'grid' }, h('thead', null, h('tr', null, [t('模型'), t('实际可控输入'), t('模型窗口'), t('依据')].map(t => h('th', null, t)))),
+            h('table', { class: 'grid' }, h('thead', null, h('tr', null, [t('模型'), t('实际可控输入'), t('模型窗口'), t('依据')].map(head => h('th', null, head)))),
                 h('tbody', null, IDS.map(id => {
                     const p = cap.models[id];
                     const status = p?.window_status ?? p?.status ?? 'UNKNOWN';

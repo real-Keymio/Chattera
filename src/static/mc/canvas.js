@@ -344,7 +344,7 @@ export function mountCanvas(box, name) {
     });
     // drop from the chat, the library or the desktop selection
     root.addEventListener('dragover', event => {
-        if (![...event.dataTransfer.types].some(t => t === 'application/x-multichat' || t === 'text/plain')) return;
+        if (![...event.dataTransfer.types].some(x => x === 'application/x-multichat' || x === 'text/plain')) return;
         event.preventDefault(); event.dataTransfer.dropEffect = 'copy';
         const r = root.getBoundingClientRect(), ghost = root.querySelector('.cv-drop');
         ghost.style.transform = `translate(${event.clientX - r.left - 30}px, ${event.clientY - r.top - 16}px)`; root.classList.add('dropping');

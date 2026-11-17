@@ -35,7 +35,7 @@ LABELS = dict(BUILTIN_LABELS)
 COLORS = dict(BUILTIN_COLORS)
 PROFILE_FIELDS = {'identity', 'protocol', 'base_url', 'model', 'enabled', 'timeout', 'max_output_tokens', 'max_requests',
                   'max_requests_per_task', 'tools', 'images', 'effort', 'thinking', 'reasoning_parameter', 'output_limit_field',
-                  'provider', 'anthropic_version', 'anthropic_auth', 'native_search', 'google_auth'}
+                  'provider', 'anthropic_version', 'anthropic_auth', 'anthropic_workspace', 'native_search', 'google_auth'}
 
 LENSES = {
  'open': dict(name=N_('开放科学讨论'), builtin=True, summary=N_('默认。自然交流，质疑前提，保留分歧，不把讨论变成交付任务。'), method=''),
@@ -265,6 +265,7 @@ class Registry:
                         tools=bool(cfg.get('tools')), images=bool(cfg.get('images')), thinking=cfg.get('thinking'),
                         max_output_tokens=cfg.get('max_output_tokens'), max_requests=cfg.get('max_requests'),
                         max_requests_per_task=cfg.get('max_requests_per_task'), reasoning_parameter=cfg.get('reasoning_parameter'),
+                        output_limit_field=cfg.get('output_limit_field', 'max_tokens'), anthropic_workspace=cfg.get('anthropic_workspace'),
                         provider=cfg.get('provider', ''), usage=dict(getattr(runner, 'usage', {})) if runner else None,
                         available=bool(runner and runner.available()))
         else:
@@ -369,7 +370,7 @@ def install(runtime, app_module, cfg, config_path):
                 name = slug(label, set(registry.backends()) | set(registry.data['removed']) | {'legacy', 'mock', *BUILTIN[:3]}, 'api-' + uuid.uuid4().hex[:6])
             if not re.fullmatch(NAME, name) or name in ('legacy', 'mock', *BUILTIN[:3]) or name.startswith('search_'):
                 raise ValueError('Profile name: lowercase letters, digits, - or _, starting with a letter; reserved names are not allowed')
-            changes = {k: v for k, v in (body.get('settings') or {}).items() if k in PROFILE_FIELDS}
+            changes = {k: (None if v == '' else v) for k, v in (body.get('settings') or {}).items() if k in PROFILE_FIELDS}
             with registry.lock, tasks.lock:
                 existing = registry.backends().get(name)
                 if existing and existing.get('type') not in API_TYPES: raise ValueError('That name belongs to a subscription CLI')

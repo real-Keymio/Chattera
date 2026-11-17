@@ -14,7 +14,7 @@ def error_hint(raw):
     except (ValueError,AttributeError):return ''
     names=('model','messages','contents','system','systemInstruction','tools','images','image_url','inlineData',
            'reasoning_effort','thinking','thinkingConfig','thinkingBudget','thinkingLevel','effort','output_config',
-           'max_tokens','max_completion_tokens','maxOutputTokens')
+           'max_tokens','max_completion_tokens','maxOutputTokens','anthropic-workspace-id')
     found=[name for name in names if re.search(r'\b'+re.escape(name)+r'\b',message,re.IGNORECASE)]
     return '; provider-referenced parameters: '+', '.join(found) if found else ''
 

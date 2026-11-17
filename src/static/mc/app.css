@@ -972,3 +972,11 @@ body.cv-carrying, body.cv-carrying * { cursor: grabbing !important; user-select:
 /* canvas toolbar: keep its labels on one line in narrow windows */
 .cv-bar { white-space: nowrap; max-width: calc(100% - 24px); }
 .cv-bar button { white-space: nowrap; flex-shrink: 0; }
+
+/* model capabilities right on the row, and fixes offered by a failed test */
+.caps-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; font-size: .86em; color: var(--ink-2); }
+.caps-row .switch { font-size: inherit; }
+.caps-row .cap-effort.muted, .caps-row .cap-window { color: var(--ink-3); }
+.caps-row .link { font-size: .95em; }
+.test-result .fix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); color: var(--ink-1, var(--ink)); }
+.compat .field, .compat .radio { margin-top: 4px; }

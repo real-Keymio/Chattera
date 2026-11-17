@@ -52,9 +52,9 @@ const put = (el, ...kids) => el.replaceChildren(...kids.flat(Infinity).filter(ki
 const BRANDS = { mimo: 'MiMo', gpt: 'GPT', qwen: 'Qwen', deepseek: 'DeepSeek', glm: 'GLM', kimi: 'Kimi', claude: 'Claude', gemini: 'Gemini', llama: 'Llama', doubao: 'Doubao', grok: 'Grok', mistral: 'Mistral', ernie: 'ERNIE' };
 /** A readable participant name for a model: the provider's display name, or the id with brand casing (mimo-v2.6-pro → MiMo v2.6 Pro). */
 const niceName = m => m.label && m.label !== m.id ? m.label
-    : m.id.split('/').pop().split(/[-_]/).filter(Boolean).map(t => BRANDS[t.toLowerCase()] || (/^[a-z]{2,}$/.test(t) ? t[0].toUpperCase() + t.slice(1) : t)).join(' ');
+    : m.id.split('/').pop().split(/[-_]/).filter(Boolean).map(x => BRANDS[x.toLowerCase()] || (/^[a-z]{2,}$/.test(x) ? x[0].toUpperCase() + x.slice(1) : x)).join(' ');
 const field = (text, control, hint) => h('label', { class: 'field' }, h('span', { class: 'field-name' }, text), control, hint ? h('small', { class: 'hint' }, hint) : null);
-const select = (options, value, props = {}) => h('select', { class: 'input', ...props }, options.map(([v, t, off]) => h('option', { value: v, selected: String(v) === String(value ?? ''), disabled: off }, t)));
+const select = (options, value, props = {}) => h('select', { class: 'input', ...props }, options.map(([v, text, off]) => h('option', { value: v, selected: String(v) === String(value ?? ''), disabled: off }, text)));
 function toggle(checked, onchange, text) {
     const input = h('input', { type: 'checkbox', checked, onchange: event => onchange(event.target.checked, event.target) });
     return h('label', { class: 'switch' }, input, h('i'), text ? h('span', null, text) : null);
@@ -69,9 +69,9 @@ function levelsOf(name, model) {
 /** 默认 | 低 | 中 | 高 | … — only the levels this model declares. */
 function effortPicker(levels, value, onchange, fallback) {
     if (!levels.length) return h('div', { class: 'effort none' }, t('这个模型在此连接上没有可调的推理强度'));
-    const draw = () => put(box, ...[['', t('默认')], ...levels.map(l => [l, effortName(l)])].map(([v, t]) =>
+    const draw = () => put(box, ...[['', t('默认')], ...levels.map(l => [l, effortName(l)])].map(([v, text]) =>
         h('button', { type: 'button', class: v === (value || '') ? 'active' : '', title: v ? t('调用时传递：{0}', v) : (fallback ? t('使用默认档位（{0}）', effortName(fallback)) : t('使用默认档位')),
-            onclick: () => { value = v; draw(); onchange(v); } }, t)));
+            onclick: () => { value = v; draw(); onchange(v); } }, text)));
     const box = h('div', { class: 'seg effort', role: 'group', 'aria-label': t('推理强度') });
     draw();
     return box;
@@ -122,7 +122,26 @@ const facts = (entry, api_kind) => [
 async function runTest(name, model) {
     const value = await act(`/api/chat/profiles/${encodeURIComponent(name)}/test`, model ? { model } : {});
     return value.test.ok ? { ok: true, text: t('调用成功：{0} 秒内返回（服务端报告模型 {1}）。', value.test.seconds, value.test.reported_model) }
-        : { ok: false, text: t('调用失败：') + friendlyReason(value.test.reason || '') };
+        : { ok: false, text: t('调用失败：') + friendlyReason(value.test.reason || ''), reason: value.test.reason || '' };
+}
+
+/** A failed test whose cause a setting on this page fixes: say which one, and offer to change it. */
+function fixFor(profile, reason, retest) {
+    if (!reason || profile.kind !== 'api') return null;
+    if (/anthropic-workspace-id/i.test(reason))
+        return h('div', { class: 'fix' }, t('这把 Key 没有绑定到工作区（workspace），每次请求都要带上工作区 ID。请在下方“兼容性”一节填写，然后保存。'),
+            h('button', { class: 'btn small', onclick: () => { const el = document.querySelector('.mm-detail [data-field="anthropic_workspace"]'); el?.scrollIntoView({ block: 'center' }); el?.focus(); } }, t('去填写')));
+    if (profile.protocol === 'openai-chat' && profile.output_limit_field !== 'max_completion_tokens' && /max_tokens|max_completion_tokens/.test(reason))
+        return h('div', { class: 'fix' }, t('服务商不接受 max_tokens 参数，较新的 OpenAI 模型要用 max_completion_tokens。'),
+            actionButton({ label: t('改用 max_completion_tokens 并重试'), action: async () => {
+                await act('/api/chat/profiles', { name: profile.name, settings: { output_limit_field: 'max_completion_tokens' } }); await retest(); return false; } }));
+    if (profile.protocol === 'openai-chat' && /reasoning_effort/.test(reason))
+        return h('div', { class: 'fix' }, t('服务商不接受推理强度参数。可以在下方“兼容性”一节里关闭“向服务商发送推理强度参数”，或换一个档位。'));
+    return null;
+}
+function showTest(box, out, profile, retest) {
+    box.hidden = false; box.className = 'test-result ' + (out.ok ? 'ok' : 'bad');
+    box.replaceChildren(out.text, out.ok ? '' : fixFor(profile, out.reason, retest) || '');
 }
 
 /** Create a participant for one model; the name is the model's, made unique if needed. Returns the new id. */
@@ -203,7 +222,7 @@ function addWizard(done, start) {
     const body = h('div', { class: 'wiz' });
     const dialog = modal({ title: t('添加模型'), wide: true, body });
     dialog.el.classList.add('wiz-modal');
-    const steps = h('ol', { class: 'wiz-steps' }, [t('选择服务商'), t('连接'), t('选择模型')].map(t => h('li', null, t)));
+    const steps = h('ol', { class: 'wiz-steps' }, [t('选择服务商'), t('连接'), t('选择模型')].map(step => h('li', null, step)));
     const pane = h('div', { class: 'wiz-pane' }), error = h('p', { class: 'form-error', role: 'alert', hidden: true });
     body.append(steps, error, pane);
     const fail = text => { error.textContent = text || ''; error.hidden = !text; if (text) error.scrollIntoView({ block: 'nearest' }); };
@@ -402,17 +421,41 @@ function participantDetail(p, rerender) {
     h('footer', { class: 'mm-foot' }, h('span', { class: 'hint' }, t('更改保存后立即生效，不影响已有消息。')), h('span', { class: 'grow' }), save)];
 }
 
+/** The switches people look for on a model: tool calls, images, reasoning effort, context window. Saved at once. */
+function capsRow(profile, entry, rerender, say) {
+    const api_kind = profile.kind === 'api';
+    const save = async (change, input) => {
+        try { await act('/api/chat/catalog/' + encodeURIComponent(profile.name), { id: entry.id, ...change }); rerender(); }
+        catch (e) {
+            if (input) input.checked = !input.checked;
+            say(e.message);
+            if (/窗口|window/i.test(e.message)) modelDialog(profile.name, entry, rerender);  // the usual cause: the window is still an assumed 128K
+        } };
+    const levels = entry.effort_values || [], offAtConnection = api_kind && profile.protocol === 'openai-chat' && profile.reasoning_parameter !== 'reasoning_effort';
+    const effort = levels.length
+        ? h('span', { class: 'cap-effort', title: offAtConnection ? t('这个连接没有开启“推理强度参数”，档位暂时不会发送。在下方“兼容性”一节里开启。') : '' },
+            t('推理强度：') + levels.map(effortName).join(' · ') + (offAtConnection ? t('（连接未开启）') : ''))
+        : h('span', { class: 'cap-effort muted' }, t('推理强度：未设置档位'));
+    return h('div', { class: 'caps-row' },
+        api_kind ? toggle(Boolean(entry.tools), (on, input) => save({ tools: on }, input), t('工具调用')) : null,
+        api_kind ? toggle(Boolean(entry.images), (on, input) => save({ images: on }, input), t('图片输入')) : null,
+        effort,
+        h('span', { class: 'cap-window' }, t('窗口 {0}', windowText(entry)) + (entry.window_status === 'UNKNOWN' ? t('（假设）') : '')),
+        h('button', { class: 'link', onclick: () => modelDialog(profile.name, entry, rerender) }, t('修改档位与窗口…')));
+}
+
 function modelRows(profile, rerender, say) {
     const api_kind = profile.kind === 'api';
     return catalogOf(profile.name).map(entry => {
         const speaking = speakersOf(profile.name, entry.id);
         const result = h('div', { class: 'test-result', hidden: true });
+        const test = async () => {
+            result.hidden = false; result.className = 'test-result'; result.textContent = t('正在发送一次很小的请求…');
+            try { showTest(result, await runTest(profile.name, entry.id), profileOf(profile.name) || profile, async () => { await loadModels(); await test(); }); }
+            catch (e) { result.className = 'test-result bad'; result.textContent = e.message; } };
         const more = event => menu(Object.assign(event.currentTarget, { alignRight: true }), [
             { label: t('编辑名称与规格…'), icon: 'edit', action: () => modelDialog(profile.name, entry, rerender) },
-            { label: t('测试'), icon: 'check', action: async () => {
-                result.hidden = false; result.className = 'test-result'; result.textContent = t('正在发送一次很小的请求…');
-                try { const out = await runTest(profile.name, entry.id); result.className = 'test-result ' + (out.ok ? 'ok' : 'bad'); result.textContent = out.text; }
-                catch (e) { result.className = 'test-result bad'; result.textContent = e.message; } } },
+            { label: t('测试'), icon: 'check', action: test },
             entry.current ? null : { label: t('设为这个连接的默认模型'), icon: 'pin', action: async () => {
                 try { await act(api_kind ? '/api/chat/profiles' : '/api/chat/cli/' + profile.name, api_kind ? { name: profile.name, settings: { model: entry.id } } : { model: entry.id }); rerender(); } catch (e) { say(e.message); } } },
             'sep',
@@ -421,7 +464,7 @@ function modelRows(profile, rerender, say) {
         ]);
         return h('div', { class: 'model-row' },
             h('div', { class: 'model-main' }, h('div', { class: 'model-name' }, h('strong', null, entry.label || entry.id), entry.current ? h('span', { class: 'cap' }, t('连接默认')) : null, entry.label !== entry.id ? h('code', null, entry.id) : null),
-                h('div', { class: 'facts' }, facts(entry, api_kind), proof(entry)), result),
+                h('div', { class: 'facts' }, proof(entry)), capsRow(profile, entry, rerender, say), result),
             h('div', { class: 'model-side' },
                 speaking.length ? speaking.map(p => h('button', { class: 'who-link', style: { '--hue': color(p.id) }, title: t('查看这位参与者'), onclick: () => { view.sel = { type: 'p', id: p.id }; rerender(); } }, sigil(p.id, 'xs'), p.label))
                     : h('button', { class: 'btn small', title: t('让这个模型成为一位独立的聊天参与者'), onclick: async event => {
@@ -448,10 +491,12 @@ function connectionDetail(profile, rerender) {
     const f = {}, adv = h('details', { class: 'adv' }, h('summary', null, t('高级设置')));
     const sections = [];
     const result = h('div', { class: 'test-result', hidden: true });
-    const test = actionButton({ label: t('测试连接'), action: async () => {
+    const runConnectionTest = async () => {
         result.hidden = false; result.className = 'test-result'; result.textContent = t('正在用默认模型发送一次很小的请求…');
-        const out = await runTest(profile.name); result.className = 'test-result ' + (out.ok ? 'ok' : 'bad'); result.textContent = out.text; return false;
-    } }, null, text => { if (text) { result.hidden = false; result.className = 'test-result bad'; result.textContent = text; } });
+        showTest(result, await runTest(profile.name), profileOf(profile.name) || profile, async () => { await loadModels(); await runConnectionTest(); });
+    };
+    const test = actionButton({ label: t('测试连接'), action: async () => { await runConnectionTest(); return false; } },
+        null, text => { if (text) { result.hidden = false; result.className = 'test-result bad'; result.textContent = text; } });
 
     if (api_kind) {
         const env = profile.key_source?.startsWith('environment');
@@ -469,7 +514,9 @@ function connectionDetail(profile, rerender) {
             h('div', { class: 'card-actions' }, test, h('span', { class: 'hint' }, t('请求发往 {0}', profile.host || '—'))), result));
         Object.assign(f, {
             base_url: h('input', { class: 'input', value: profile.base_url || '', placeholder: 'https://…/v1', oninput: dirty }),
-            protocol: select(Object.entries(PROTOCOL), profile.protocol, { onchange: () => { dirty(); f.effortRow.hidden = f.protocol.value !== 'openai-chat'; } }),
+            protocol: select(Object.entries(PROTOCOL), profile.protocol, { onchange: () => { dirty(); showCompat(); } }),
+            output_limit_field: select([['max_tokens', t('max_tokens（大多数服务）')], ['max_completion_tokens', t('max_completion_tokens（OpenAI 较新的模型）')]], profile.output_limit_field || 'max_tokens', { onchange: dirty }),
+            anthropic_workspace: h('input', { class: 'input', value: profile.anthropic_workspace || '', placeholder: 'wrkspc_…', maxLength: 100, dataset: { field: 'anthropic_workspace' }, oninput: dirty }),
             max_output_tokens: h('input', { class: 'input', type: 'number', min: 256, max: 32768, value: profile.max_output_tokens ?? 8192, oninput: dirty }),
             timeout: h('input', { class: 'input', type: 'number', min: 10, max: 300, value: profile.timeout ?? 120, oninput: dirty }),
             max_requests: h('input', { class: 'input', type: 'number', min: 1, placeholder: t('不限'), value: profile.max_requests ?? '', oninput: dirty }),
@@ -477,12 +524,21 @@ function connectionDetail(profile, rerender) {
             native_search: select([['', t('自动判断')], ['off', t('不使用（改用 Chattera 检索）')], ['deepseek', t('DeepSeek 服务端搜索')], ['web_search_tool', t('web_search 工具（MiMo 等）')], ['google', t('Google Search（原生协议）')]], profile.native_search || '', { onchange: dirty }),
             google_auth: h('input', { type: 'checkbox', checked: profile.google_auth === 'bearer', onchange: dirty }),
         });
-        f.effortRow = h('label', { class: 'radio', hidden: profile.protocol !== 'openai-chat' }, f.effort_param, t('向服务商发送推理强度参数'), h('small', null, t('reasoning_effort；仅在服务商支持时开启')));
+        f.effortRow = h('label', { class: 'radio' }, f.effort_param, t('向服务商发送推理强度参数'), h('small', null, t('reasoning_effort；模型有推理强度档位时需要开启')));
+        const compat = {
+            'openai-chat': h('div', null, field(t('输出上限的参数名'), f.output_limit_field, t('测试时报 max_tokens 不被接受，就改成 max_completion_tokens。')), f.effortRow),
+            'anthropic-messages': field(t('工作区 ID（anthropic-workspace-id）'), f.anthropic_workspace, t('只有当 Key 没有绑定到某个工作区、Anthropic 要求带上工作区 ID 时才需要填写。ID 在 Anthropic Console 的工作区设置里，以 wrkspc_ 开头。')),
+            'google-generate-content': h('label', { class: 'radio' }, f.google_auth, t('用 Bearer 方式发送密钥'), h('small', null, t('仅 Google 原生协议经中转站访问时需要'))),
+        };
+        const compatBox = h('div', { class: 'compat' });
+        const showCompat = () => compatBox.replaceChildren(compat[f.protocol.value] || '');
+        showCompat();
+        sections.push(h('section', { class: 'mm-sec' }, h('h4', null, t('兼容性')),
+            h('p', { class: 'hint' }, t('不同服务商对请求格式的要求不一样。测试连接失败时，通常改这里的设置就能解决。')), compatBox));
         const u = profile.usage;
         adv.append(h('div', { class: 'form-grid two' }, field(t('服务地址（Base URL）'), f.base_url), field(t('协议'), f.protocol),
                 field(t('单次输出上限（Token）'), f.max_output_tokens, t('太小会让长回答被截断。')), field(t('超时（秒）'), f.timeout), field(t('累计请求上限'), f.max_requests, t('留空为不限。')),
                 field(t('官方联网搜索'), f.native_search, t('当前生效：{0}。服务商拒绝时会自动改用 Chattera 检索并记录原因。', SEARCH_KIND[profile.search_kind] || t('没有官方搜索，独立检索时使用 Chattera 检索')))),
-            f.effortRow, h('label', { class: 'radio' }, f.google_auth, t('用 Bearer 方式发送密钥'), h('small', null, t('仅 Google 原生协议经中转站访问时需要'))),
             h('dl', { class: 'kv' }, h('dt', null, t('连接 ID')), h('dd', null, h('code', null, profile.name)), h('dt', null, t('密钥位置')), h('dd', null, profile.key_source || '—'),
                 u ? [h('dt', null, t('本机累计')), h('dd', null, t('请求 {0} 次 · 输入 {1} / 输出 {2} Token（服务商返回值；金额无法从这里得知）', fmtNum(u.requests), fmtNum(u.prompt_tokens), fmtNum(u.completion_tokens)))] : null));
     } else {
@@ -508,13 +564,16 @@ function connectionDetail(profile, rerender) {
             if (api_kind) {
                 const settings = { protocol: f.protocol.value, base_url: f.base_url.value.trim().replace(/\/+$/, ''), max_output_tokens: Number(f.max_output_tokens.value), timeout: Number(f.timeout.value),
                     max_requests: f.max_requests.value.trim() ? Number(f.max_requests.value) : null, reasoning_parameter: f.protocol.value === 'openai-chat' && f.effort_param.checked ? 'reasoning_effort' : null,
-                    native_search: f.native_search.value || null, google_auth: f.protocol.value === 'google-generate-content' && f.google_auth.checked ? 'bearer' : null };
+                    native_search: f.native_search.value || null, google_auth: f.protocol.value === 'google-generate-content' && f.google_auth.checked ? 'bearer' : null,
+                    output_limit_field: f.protocol.value === 'openai-chat' && f.output_limit_field.value === 'max_completion_tokens' ? 'max_completion_tokens' : null,
+                    anthropic_workspace: f.protocol.value === 'anthropic-messages' ? f.anthropic_workspace.value.trim() || null : null };
                 await act('/api/chat/profiles', { name: profile.name, label: name.value.trim(), settings });
             } else await act('/api/chat/cli/' + profile.name, { label: name.value.trim(), timeout: Number(f.timeout.value), native_search: f.native_search.value || null });
             toast(t('已保存，立即生效')); rerender();
         } catch (e) {
             save.disabled = false;
-            const where = /HTTPS|base URL|服务地址/.test(e.message) ? f.base_url : /output|输出/.test(e.message) ? f.max_output_tokens : /timeout|超时/i.test(e.message) ? f.timeout : null;
+            const where = /HTTPS|base URL|服务地址/.test(e.message) ? f.base_url : /output|输出/.test(e.message) ? f.max_output_tokens : /timeout|超时/i.test(e.message) ? f.timeout
+                : /Anthropic header/i.test(e.message) ? f.anthropic_workspace : null;
             if (where) { adv.open = true; where.classList.add('invalid'); where.focus(); }
             say(e.message);
         }
@@ -523,7 +582,7 @@ function connectionDetail(profile, rerender) {
         h('header', { class: 'mm-head' }, avatar(profile, 'lg'), h('div', { class: 'mm-title' }, name, h('div', { class: 'mm-sub' }, pill(status), h('span', null, api_kind ? PROTOCOL[profile.protocol] || profile.protocol : t('订阅 CLI')),
             speaking.length ? h('span', null, t('参与者：') + speaking.map(p => p.label).join(t('、'))) : h('span', null, t('还没有参与者使用')),
             h('span', { title: t('独立检索时这个连接使用的搜索方式') }, profile.search_kind ? t('官方搜索 ✓') : t('Chattera 检索')))), enabled),
-        notice, ...sections, models, adv,
+        notice, sections[0], models, ...sections.slice(1), adv,
         api_kind ? h('div', { class: 'card-actions end' },
             h('button', { class: 'btn', onclick: async () => { try { const made = await act(`/api/chat/profiles/${encodeURIComponent(profile.name)}/duplicate`, {});
                 if (made.saved) view.sel = { type: 'c', id: made.saved }; toast(t('已复制。密钥不会复制，请为新连接单独填写。')); rerender(); } catch (e) { say(e.message); } } }, t('复制连接')),

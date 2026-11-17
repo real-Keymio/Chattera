@@ -19,7 +19,7 @@ HAN = re.compile('[\u4e00-\u9fff]')
 JS_T = re.compile(r"(?<![\w$.])t\(\s*'((?:\\.|[^'\\])*)'")
 PLACEHOLDER = re.compile(r'\{\d+\}')
 # Chinese that is meant to stay: regexes that accept both languages, and Unicode ranges.
-JS_ALLOWED = ('/^(新聊天|New chat)', '/^(检索证据|Retrieved evidence)', '一-鿿', '|服务地址/', '|输出/', '|超时/')
+JS_ALLOWED = ('/^(新聊天|New chat)', '/^(检索证据|Retrieved evidence)', '一-鿿', '|服务地址/', '|输出/', '|超时/', '/窗口|window/')
 
 
 def unescape(text):
@@ -83,6 +83,19 @@ def test_no_chinese_outside_translation_calls_in_frontend():
             if HAN.search(code) and not code.strip().startswith(('*', '/*')) and 'i18n-ignore' not in line and not any(a in line for a in JS_ALLOWED):
                 leftovers.append(f'{f.name}:{n}: {line.strip()[:100]}')
     assert not leftovers, 'wrap in t():\n' + '\n'.join(leftovers)
+
+
+def test_no_local_variable_named_t_hides_the_translator():
+    """`.map(([v, t]) => … t('…'))` made t a string there and broke the effort picker; no file using t() may bind its own t."""
+    shadow = re.compile(r"\(\[[^\]]*\bt\b[^\]]*\]\)\s*=>|\(\s*t\s*[,)]\s*=>|(?<![\w$.])t\s*=>|\b(?:const|let|var)\s+t\b")
+    found = []
+    for f in js_files():
+        text = f.read_text('utf-8')
+        if "from './i18n.js'" not in text: continue
+        for n, line in enumerate(text.splitlines(), 1):
+            if shadow.search(JS_T.sub('', line)):
+                found.append(f'{f.name}:{n}: {line.strip()[:100]}')
+    assert not found, 'rename these local `t` bindings:\n' + '\n'.join(found)
 
 
 def test_no_chinese_outside_translation_calls_in_server():

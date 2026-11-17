@@ -116,7 +116,7 @@ export function lastActivity(channel) {
     return list.length ? list[list.length - 1].timestamp : (roomOf(channel)?.created_at || 0);
 }
 export function runningTasks(channel) {
-    return [...S.tasks.values()].filter(t => t.channel === channel && t.state === 'running');
+    return [...S.tasks.values()].filter(x => x.channel === channel && x.state === 'running');
 }
 
 function addMessage(msg) {

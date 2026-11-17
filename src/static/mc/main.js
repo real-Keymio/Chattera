@@ -32,7 +32,7 @@ function renderStage() {
     const running = room ? runningTasks(S.active) : [];
     document.getElementById('voices').classList.toggle('many', IDS.length > 4);
     document.getElementById('voices').replaceChildren(...(room ? IDS.map(id => {
-        const task = running.find(t => t.identity === id), { caps } = capsOf(room, id), now = effectiveModel(room, id);
+        const task = running.find(x => x.identity === id), { caps } = capsOf(room, id), now = effectiveModel(room, id);
         const state = task ? (task.output_started_at ? 'writing' : 'thinking') : caps && !caps.available ? 'off' : 'idle';
         return h('button', { class: 'voice', dataset: { state }, style: { '--hue': color(id) },
             title: `${label(id)} · ${now.modelLabel || t('默认模型')}${now.effort ? ' · ' + effortName(now.effort) : ''}${state === 'off' ? t(' · 连接不可用') : ''}`,

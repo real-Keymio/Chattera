@@ -629,14 +629,14 @@ function renderMessage(msg, pane) {
         el.append(notices);
         if (folded.has(msg.id)) setFold(el, true);
     } else {
-        const badges = stateBadges(msg, scope), targets = !shared ? (meta.targets || []).filter(t => ALL.includes(t)) : [];
+        const badges = stateBadges(msg, scope), targets = !shared ? (meta.targets || []).filter(x => ALL.includes(x)) : [];
         if (targets.length) el.style.setProperty('--strand', `linear-gradient(90deg, ${targets.map(color).join(', ')}${targets.length === 1 ? ', transparent' : ''})`);
         if (!shared) el.append(h('div', { class: 'u-meta' }, badges, stamp));
         if (msg.reply_to != null) el.append(replyRef(msg, pane));
         el.append(body);
         if (atts) el.append(atts);
         el.append(h('div', { class: 'u-foot' },
-            targets.length ? h('span', { class: 'u-targets', title: t('这条消息点名的回答者：') + targets.map(label).join(t('、')) }, h('span', { class: 'arrow' }, '→'), targets.map(t => sigil(t, 'xs'))) : null, acts), notices);
+            targets.length ? h('span', { class: 'u-targets', title: t('这条消息点名的回答者：') + targets.map(label).join(t('、')) }, h('span', { class: 'arrow' }, '→'), targets.map(id => sigil(id, 'xs'))) : null, acts), notices);
     }
     return el;
 }
@@ -777,6 +777,7 @@ export function friendlyReason(reason = '') {
     if (cli && said && /authenticat|log ?in|oauth|api key|credential/i.test(said)) return t('{0} CLI 没有登录或登录已失效，没有写入回复。请先在终端里登录这个 CLI（Claude Code：claude auth login），再重试。CLI 的提示：{1}', cli[1], said);
     if (cli && said) return t('{0} CLI 异常退出（代码 {1}），没有写入回复。CLI 的提示：{2}', cli[1], cli[2], said);
     if (cli) return t('{0} CLI 异常退出（代码 {1}），没有写入回复。可能是订阅登录失效、模型 ID 不被接受或 CLI 已更新，可在终端里手动运行一次确认。', cli[1], cli[2]);
+    if (/anthropic-workspace-id/.test(reason)) return t('Anthropic 要求带上工作区 ID：这把 Key 没有绑定到工作区。在连接的“兼容性”里填写工作区 ID，或改用绑定了工作区的 Key。');
     if (/API cumulative request cap/.test(reason)) return t('被本机设置的 API 累计请求上限拦截（不是服务商余额不足）。');
     if (/incomplete or unsupported stop state/.test(reason)) return t('回答在完成前被截断（通常是达到了单次输出上限）。可在设置 → 模型与服务里调高这个连接的输出上限。');
     if (/per-task request\/tool round limit|tool-call limit/.test(reason)) return t('模型连续调用工具的次数达到上限，没有给出最终回答。可以重试，或把问题拆小。');

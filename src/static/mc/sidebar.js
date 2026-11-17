@@ -1,8 +1,7 @@
-// Chat-style sidebar: one-click new chat, switch, search, rename/archive/restore.
-// There is deliberately no "delete": the server keeps history append-only and has no safe delete yet.
+// Chat-style sidebar: one-click new chat, switch, search, rename/archive/restore, permanent delete.
 import { h, icon, ICONS, api, toast, menu, promptDialog, confirmDialog, fmtTime, store } from './util.js';
 import { S, IDS, ALL, on, emit, label, family, roomOf, openRoom, refreshRooms, lastActivity, runningTasks,
-    channelMessages, reconnect } from './state.js';
+    channelMessages, reconnect, forgetChannel } from './state.js';
 import { scrollToMessage } from './panes.js';
 import { focusComposer } from './composer.js';
 import { t } from './i18n.js';
@@ -34,6 +33,20 @@ export function archiveRoom(room) {
         await api('/api/chat/rooms/' + room.id, { archived: true }); await refreshRooms();
     });
 }
+export function deleteRoom(room) {
+    confirmDialog(t('永久删除聊天'), t('“{0}”的全部消息、附件、回答记录、摘要、画布和资料库会从这台电脑上删除，无法恢复。正在进行的回复会先停止。从它建立的分支是独立的副本，不受影响。', room.name),
+        t('永久删除'), async () => {
+            await api('/api/chat/rooms/' + room.id + '/delete', { confirm: true });
+            forgetChannel(room.channel); await refreshRooms(); toast(t('已删除“{0}”', room.name));
+        }, true);
+}
+function emptyArchive(rooms) {
+    confirmDialog(t('清空已归档'), t('{0} 个已归档聊天会被永久删除，连同它们的消息、附件、回答记录、摘要、画布和资料库，无法恢复。', rooms.length),
+        t('全部永久删除'), async () => {
+            await api('/api/chat/archived/delete', { confirm: true });
+            rooms.forEach(r => forgetChannel(r.channel)); await refreshRooms(); toast(t('已删除 {0} 个聊天', rooms.length));
+        }, true);
+}
 async function restoreRoom(room) {
     try {
         await api('/api/chat/rooms/' + room.id, { archived: false });
@@ -46,11 +59,14 @@ async function restoreRoom(room) {
 function roomMenu(room, anchor) {
     menu(anchor, room.archived ? [
         { label: t('恢复聊天'), icon: 'archive', action: () => restoreRoom(room) },
+        'sep',
+        { label: t('永久删除…'), icon: 'close', danger: true, action: () => deleteRoom(room) },
     ] : [
         { label: t('重命名'), icon: 'edit', action: () => renameRoom(room) },
         { label: t('房间设置'), icon: 'sliders', action: () => { openRoom(room.channel); emit('panel', { tab: 'discussion' }); } },
         'sep',
         { label: t('归档'), icon: 'archive', action: () => archiveRoom(room) },
+        { label: t('永久删除…'), icon: 'close', danger: true, action: () => deleteRoom(room) },
     ]);
 }
 
@@ -124,7 +140,8 @@ export function renderSidebar() {
         box.append(h('button', { class: 'room-group toggle' + (showArchived ? ' open' : ''), 'aria-expanded': String(showArchived),
             onclick: () => { showArchived = !showArchived; store.set('show-archived', showArchived); renderSidebar(); } },
             icon(ICONS.chevron, 12), t('已归档（{0}）', archived.length)));
-        if (showArchived) box.append(...archived.map(roomRow));
+        if (showArchived) box.append(...archived.map(roomRow),
+            h('button', { class: 'room-purge', onclick: () => emptyArchive(archived) }, t('清空已归档…')));
     }
 }
 

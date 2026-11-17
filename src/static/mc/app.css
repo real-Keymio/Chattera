@@ -82,6 +82,7 @@
 #room-list { flex: 1; overflow-y: auto; padding: 2px 8px 12px; min-height: 0; }
 .room-group { font-size: .74em; color: var(--ink-3); font-weight: 600; letter-spacing: .06em; padding: 14px 8px 5px; display: flex; align-items: center; gap: 6px; }
 .room-group.toggle { width: 100%; } .room-group.toggle svg { transform: rotate(-90deg); transition: transform var(--d1); } .room-group.toggle.open svg { transform: none; }
+.room-purge { margin: 4px 8px 10px; padding: 4px 8px; font-size: .78em; color: var(--ink-3); border-radius: 6px; } .room-purge:hover { color: var(--err); background: var(--hover); }
 .room { display: flex; align-items: center; gap: 8px; padding: 7px 6px 7px 10px; border-radius: 9px; cursor: pointer; position: relative; color: var(--ink-2); transition: background var(--d1), color var(--d1); }
 .room:hover { background: var(--hover); color: var(--ink); }
 .room.active { background: var(--active); color: var(--ink); font-weight: 600; }

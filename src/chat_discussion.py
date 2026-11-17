@@ -215,6 +215,9 @@ def install(runtime, app_module):
                             mapping[message['id']] = added['id']
                     finally:
                         runtime.revision_write = False
+                # A branch is independent of its source: it gets its own copy of the research library too.
+                if getattr(runtime, 'library', None):
+                    runtime.library.copy_room(source['id'], room['id'], mapping)
                 pins = [dict(p, source_message_id=mapping.get(p.get('source_message_id'))) for p in source.get('pins', [])
                         if p.get('source_message_id') is None or p.get('source_message_id') in mapping]
                 return runtime.rooms.patch(room['id'], forked_from=origin, lens=source.get('lens'), lens_by_model=source.get('lens_by_model'), pins=pins or None)

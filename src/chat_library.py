@@ -319,6 +319,51 @@ class Library:
                     if tag in record.get('kept', []): record['kept'].remove(tag)
             self._write(self.root / 'files.json', index)
 
+    # ---- whole rooms: a branch gets its own copy, a deleted room leaves nothing behind ----
+    def copy_room(self, source_id, target_id, mapping):
+        """Copy a room's sources, notes and citations to a new room (a branch). Message ids are remapped to the copies;
+        a reference to a message that was not copied is dropped. Kept sources stay kept in the copy."""
+        data = self.load(source_id)
+        if not data['items']: return 0
+        data = json.loads(json.dumps(data))
+        def remap(rows):
+            for row in rows:
+                if isinstance(row, dict) and 'message_id' in row:
+                    if row['message_id'] in mapping: row['message_id'] = mapping[row['message_id']]
+                    else: row.pop('message_id')
+        for item in data['items'].values():
+            remap(item.get('finders', [])); remap(item.get('page_views', []))
+        remap(data['notes']); remap(data['citations'])
+        self.update(target_id, lambda current: current.update(data))
+        with _lock:
+            index = self.files()
+            for sha, record in index.items():
+                tags = record.get('kept', [])
+                added = [target_id + tag[len(source_id):] for tag in tags if tag.startswith(source_id + ':')]
+                if added: record['kept'] = sorted(set(tags) | set(added))
+            self._write(self.root / 'files.json', index)
+        return len(data['items'])
+
+    def forget_room(self, room_id):
+        """Delete a room's library. Cached files it used are deleted too, unless another room still uses them."""
+        mine = self.load(room_id)
+        used = lambda data: {sha for item in data['items'].values() for sha in ((item.get('file') or {}).get('text_sha'), (item.get('file') or {}).get('original_sha')) if sha}
+        candidates = used(mine)
+        path = self._room(room_id)
+        with _lock:
+            path.unlink(missing_ok=True); path.with_suffix('.lock').unlink(missing_ok=True)
+            others = set()
+            for other in (self.root / 'rooms').glob('*.json'):
+                others |= used({'items': self._read(other, {}).get('items', {})})
+            index, removed = self.files(), 0
+            for sha, record in list(index.items()):
+                record['kept'] = [tag for tag in record.get('kept', []) if not tag.startswith(room_id + ':')]
+                if sha in candidates and sha not in others:
+                    (self.root / 'files' / sha[:2] / (sha + '.' + record['ext'])).unlink(missing_ok=True)
+                    index.pop(sha); removed += 1
+            self._write(self.root / 'files.json', index)
+        return dict(sources=len(mine['items']), files_removed=removed)
+
     def limit(self):
         value = self.settings().get('cache_limit_bytes', DEFAULT_LIMIT)
         return value if type(value) is int and value >= 0 else DEFAULT_LIMIT

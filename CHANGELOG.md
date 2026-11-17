@@ -9,6 +9,12 @@
 - **OpenAI official web search** on Responses connections to `api.openai.com`, recorded like the other official
   searches (queries, pages opened, citations). Switch it off per connection under *Official web search*.
 - A connection test that fails with OpenAI's "use /v1/responses" message offers the switch in one click.
+- **Delete chats.** A chat can now be deleted permanently from its menu or the room settings, and the archive can be
+  emptied in one step. Everything recorded only for that chat goes with it: messages and versions, attachments and their
+  parse cache, reply records, summaries, automatic memory, shared-retrieval bundles, canvas and research library. Cached
+  library files are removed only when no other chat uses them.
+- **Branches are independent copies**: a branch now also gets its own copy of the research library, so deleting either
+  chat never affects the other.
 - **Fix:** replies from a participant whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own
   messages; on a slow start, other added participants could look the same until the next change.
 - **Fix:** menus opened inside Settings (the ⋯ menu on each model) were shown but could not be clicked.

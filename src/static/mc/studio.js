@@ -187,7 +187,7 @@ function data(box) {
             const name = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '')?.[1] || 'chattera-export.zip';
             h('a', { href: url, download: name }).click(); setTimeout(() => URL.revokeObjectURL(url), 60000); return false;
         } }))),
-        group(t('保留与删除'), h('p', { class: 'hint' }, t('消息、版本和分享都以追加方式保存。目前没有删除聊天、清空或导入覆盖的功能；想把聊天收起来请用归档，归档后可随时恢复。想换个方向又不想丢掉现有讨论，可以在某条消息上“建立分支”。'))));
+        group(t('保留与删除'), h('p', { class: 'hint' }, t('消息、版本和分享都以追加方式保存。想把聊天收起来请用归档，可随时恢复；不再需要的聊天可以在它的菜单或房间设置里永久删除，连同附件、回答记录、摘要、画布和资料库一起清除。建立分支会复制一份独立的聊天，删除任何一方都不影响另一方。'))));
 }
 
 async function diagnostics(box) {

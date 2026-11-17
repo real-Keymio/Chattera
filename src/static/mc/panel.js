@@ -2,7 +2,7 @@
 // Global provider/profile/key matters live in settings.js, not here.
 import { h, icon, ICONS, api, toast, modal, actionButton, fmtTime, fmtNum, store } from './util.js';
 import { S, IDS, ALL, on, emit, label, color, sigil, tile, activeRoom, refreshRooms, loadModels, lensOf } from './state.js';
-import { renameRoom, archiveRoom } from './sidebar.js';
+import { renameRoom, archiveRoom, deleteRoom } from './sidebar.js';
 import { stopTask, friendlyReason, scrollToMessage } from './panes.js';
 import { roomModels } from './models.js';
 import { libraryTab } from './library.js';
@@ -94,8 +94,9 @@ async function discussion(room, box) {
             h('dt', null, t('创建时间')), h('dd', null, room.created_at ? new Date(room.created_at * 1000).toLocaleString('zh-CN') : t('未知')),
             h('dt', null, t('固定 ID')), h('dd', null, h('code', null, room.id))),
         h('div', { class: 'card-actions' }, h('button', { class: 'btn', onclick: () => renameRoom(room) }, t('重命名')),
-            h('button', { class: 'btn', onclick: () => archiveRoom(room) }, t('归档'))),
-        h('p', { class: 'hint' }, t('重命名只改变显示名称。归档会隐藏聊天并停止生成，可随时恢复。目前没有删除聊天：历史以只追加方式保存，安全删除（连同附件、摘要、版本与调用快照）尚未实现。'))));
+            h('button', { class: 'btn', onclick: () => archiveRoom(room) }, t('归档')),
+            h('button', { class: 'btn danger', onclick: () => deleteRoom(room) }, t('永久删除…'))),
+        h('p', { class: 'hint' }, t('重命名只改变显示名称。归档会隐藏聊天并停止生成，可随时恢复。永久删除会清除这个聊天的全部数据，无法恢复；从它建立的分支是独立副本，不受影响。'))));
 }
 
 async function effectivePrompt(room, id) {

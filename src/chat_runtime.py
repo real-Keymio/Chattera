@@ -422,6 +422,8 @@ def install(app_module, data_dir):
     install_library(runtime, app_module, data_dir)
     from chattera_workspace import install as install_workspace
     install_workspace(runtime, app_module, data_dir)
+    from chattera_delete import install as install_delete
+    install_delete(runtime, app_module, data_dir)
     from chattera_setup import install as install_setup
     install_setup(runtime, app_module, data_dir)
     from rolling_memory import RollingMemory

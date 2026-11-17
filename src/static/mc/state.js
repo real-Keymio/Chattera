@@ -108,6 +108,13 @@ export function capsOf(room, id) {
 }
 
 export function channelMessages(channel) { return S.byChannel.get(channel) || []; }
+/** A deleted chat: drop everything this page still holds for it. */
+export function forgetChannel(channel) {
+    for (const msg of channelMessages(channel)) { S.msgs.delete(msg.id); S.replaced.delete(msg.id); }
+    S.byChannel.delete(channel);
+    delete S.unread[channel];
+    for (const [id, task] of S.tasks) if (task.channel === channel) S.tasks.delete(id);
+}
 /** Effective (non-superseded) messages in display order: a new version takes the place of its root. */
 export function displayMessages(channel) {
     return channelMessages(channel).filter(m => !S.replaced.has(m.id))

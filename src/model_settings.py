@@ -29,6 +29,7 @@ def validate_settings(cfg,changes,backend):
         p=protocol(cfg);thinking=effective.get('thinking')
         if p=='openai-chat' and (thinking is not None or effort is not None and cfg.get('reasoning_parameter')!='reasoning_effort'):
             raise ValueError('Unsupported OpenAI reasoning mapping')
+        if p=='openai-responses' and thinking is not None:raise ValueError('The Responses API takes reasoning effort, not a thinking object')
         if thinking is not None:
             if not isinstance(thinking,dict):raise ValueError('Thinking must be a protocol-specific object or null')
             if p=='anthropic-messages':

@@ -94,7 +94,6 @@
  "max_tokens（大多数服务）": "max_tokens (most services)",
  "reasoning_effort；模型有推理强度档位时需要开启": "reasoning_effort; turn on when the model has reasoning-effort levels",
  "thinking 参数（JSON）": "thinking parameter (JSON)",
- "web_search 工具（MiMo 等）": "web_search tool (MiMo and others)",
  "{0} / 上限 {1}（超出时自动删除最久没用的）": "{0} / limit {1} (the least recently used files are removed when it's exceeded)",
  "{0} CLI 异常退出（代码 {1}），没有写入回复。CLI 的提示：{2}": "The {0} CLI exited with an error (code {1}) and wrote no reply. The CLI said: {2}",
  "{0} CLI 异常退出（代码 {1}），没有写入回复。可能是订阅登录失效、模型 ID 不被接受或 CLI 已更新，可在终端里手动运行一次确认。": "The {0} CLI exited with an error (code {1}) and wrote no reply. Its login may have expired, the model ID may not be accepted, or the CLI may have been updated; run it once in a terminal to check.",
@@ -1502,5 +1501,11 @@
  "；": "; ",
  "；模型没有再读取其余部分": "; the model didn't read the rest",
  "；模型随后自行读取 {0} 次，约 {1} 字": "; the model then read it {0} times, about {1} characters",
- "；目前有 {0} 个聊天做了单独设置": "; {0} chats currently override them"
+ "；目前有 {0} 个聊天做了单独设置": "; {0} chats currently override them",
+ "OpenAI Responses（OpenAI 官方）": "OpenAI Responses (official OpenAI)",
+ "OpenAI 兼容（Chat Completions）": "OpenAI-compatible (Chat Completions)",
+ "这个模型在 Chat Completions 接口上不能同时使用工具调用和推理强度，OpenAI 要求改用 Responses 接口。": "On Chat Completions this model cannot use tool calls together with reasoning effort; OpenAI asks for the Responses API instead.",
+ "改用 Responses 接口并重试": "Switch to the Responses API and retry",
+ "Responses 接口自带推理强度和输出上限参数，这里没有需要调整的。": "The Responses API has its own reasoning-effort and output-limit parameters; nothing to adjust here.",
+ "web_search 工具（OpenAI Responses、MiMo 等）": "web_search tool (OpenAI Responses, MiMo, …)"
 }

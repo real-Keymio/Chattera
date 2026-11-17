@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3 — OpenAI Responses API
+
+- **OpenAI Responses protocol.** Newer OpenAI reasoning models refuse function tools together with reasoning effort on
+  `/chat/completions`; connections to OpenAI can now use `/v1/responses` instead, with tool calls, reasoning effort and
+  image input. Requests are stateless (`store: false`); encrypted reasoning items are passed back unchanged between
+  tool rounds. The OpenAI preset uses it for new connections.
+- **OpenAI official web search** on Responses connections to `api.openai.com`, recorded like the other official
+  searches (queries, pages opened, citations). Switch it off per connection under *Official web search*.
+- A connection test that fails with OpenAI's "use /v1/responses" message offers the switch in one click.
+
 ## 0.1.2 — Easier model settings, clearer errors
 
 - **Model settings in plain sight.** Each model in Settings → Models & services now shows switches for tool calls and

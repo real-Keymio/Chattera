@@ -47,6 +47,7 @@ def native_kind(name, cfg):
     if chosen in NATIVE: return chosen
     protocol = cfg.get('protocol', 'openai-chat')
     if protocol == 'google-generate-content': return 'google'
+    if protocol == 'openai-responses' and (urlsplit(cfg.get('base_url', '')).hostname or '') == 'api.openai.com': return 'web_search_tool'
     if protocol == 'openai-chat' and (urlsplit(cfg.get('base_url', '')).hostname or '') == 'api.deepseek.com': return 'deepseek'
     return None
 
@@ -170,6 +171,37 @@ def from_openai(message, usage, via):
         entries.append(dict(kind='search', at=now, via=via, queries=[], results=list(seen.values())[:20], note='the provider returned its sources but not the queries it ran'))
     count = (usage or {}).get('web_search_usage')
     return entries, citations, count if isinstance(count, dict) else None
+
+
+def from_responses(items, via):
+    """web_search_call items and url_citation annotations in an OpenAI Responses output."""
+    entries, citations, now = [], [], time.time()
+    for item in items:
+        if not isinstance(item, dict): continue
+        if item.get('type') == 'web_search_call':
+            action = item.get('action') or {}
+            kind = action.get('type')
+            if kind == 'open_page' and isinstance(action.get('url'), str):
+                entries.append(dict(kind='read', at=now, via=via, url=clip(action['url'], 600), title='', level='page read by the provider'))
+                continue
+            queries = action.get('queries') or ([action['query']] if isinstance(action.get('query'), str) else [])
+            entry = dict(kind='search', at=now, via=via, queries=[clip(q, 300) for q in queries if isinstance(q, str)],
+                         results=[s for s in (source(r) for r in action.get('sources') or []) if s][:20])
+            if item.get('status') not in (None, 'completed'): entry['error'] = clip(item.get('status'), 80)
+            entries.append(entry)
+        elif item.get('type') == 'message':
+            for part in item.get('content') or []:
+                for note in (part.get('annotations') or []) if isinstance(part, dict) else []:
+                    found = source(note) if isinstance(note, dict) and note.get('type') == 'url_citation' else None
+                    if found and len(citations) < 60:
+                        for key in ('start_index', 'end_index'):
+                            if isinstance(note.get(key), int): found[key.split('_')[0]] = note[key]
+                        citations.append(found)
+    if citations and not entries:
+        seen = {}
+        for item in citations: seen.setdefault(item['url'], {k: v for k, v in item.items() if k not in ('start', 'end')})
+        entries.append(dict(kind='search', at=now, via=via, queries=[], results=list(seen.values())[:20], note='the provider returned its sources but not the queries it ran'))
+    return entries, citations
 
 
 def from_google(candidate):

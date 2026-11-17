@@ -8,7 +8,7 @@ import { S, IDS, label, color, sigil, loadModels, loadBackends, refreshRooms, ef
 import { friendlyReason } from './panes.js';
 import { t } from './i18n.js';
 
-const PROTOCOL = { 'openai-chat': t('OpenAI 兼容'), 'anthropic-messages': 'Anthropic Messages', 'google-generate-content': t('Google Gemini 原生') };
+const PROTOCOL = { 'openai-responses': t('OpenAI Responses（OpenAI 官方）'), 'openai-chat': t('OpenAI 兼容（Chat Completions）'), 'anthropic-messages': 'Anthropic Messages', 'google-generate-content': t('Google Gemini 原生') };
 const SEARCH_KIND = { claude: t('Claude Code 官方搜索（WebSearch / WebFetch）'), codex: t('Codex 官方搜索（web_search）'), deepseek: t('DeepSeek 服务端搜索与网页读取'), google: 'Google Search Grounding', web_search_tool: t('服务商的 web_search 工具') };
 const WINDOW_STATUS = { VERIFIED: t('实测'), DOCUMENTED: t('官方文档'), 'PROVIDER-REPORTED': t('服务商报告'), UNKNOWN: t('未核实') };
 /** Starting points for a new connection. Addresses are the providers' documented OpenAI-compatible endpoints; all can be edited. */
@@ -16,7 +16,7 @@ const PRESETS = [
     { id: 'deepseek', name: 'DeepSeek', url: 'https://api.deepseek.com', reasoning: true },
     { id: 'mimo', name: t('小米 MiMo'), url: 'https://api.xiaomimimo.com/v1' },
     { id: 'qwen', name: t('通义千问 Qwen'), sub: t('阿里云百炼'), url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-    { id: 'openai', name: 'OpenAI', url: 'https://api.openai.com/v1', reasoning: true },
+    { id: 'openai', name: 'OpenAI', url: 'https://api.openai.com/v1', protocol: 'openai-responses' },
     { id: 'anthropic', name: 'Anthropic', sub: 'Claude API', url: 'https://api.anthropic.com/v1', protocol: 'anthropic-messages' },
     { id: 'gemini', name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta', protocol: 'google-generate-content' },
     { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
@@ -135,6 +135,10 @@ function fixFor(profile, reason, retest) {
         return h('div', { class: 'fix' }, t('服务商不接受 max_tokens 参数，较新的 OpenAI 模型要用 max_completion_tokens。'),
             actionButton({ label: t('改用 max_completion_tokens 并重试'), action: async () => {
                 await act('/api/chat/profiles', { name: profile.name, settings: { output_limit_field: 'max_completion_tokens' } }); await retest(); return false; } }));
+    if (profile.protocol === 'openai-chat' && /\/v1\/responses/.test(reason))
+        return h('div', { class: 'fix' }, t('这个模型在 Chat Completions 接口上不能同时使用工具调用和推理强度，OpenAI 要求改用 Responses 接口。'),
+            actionButton({ label: t('改用 Responses 接口并重试'), action: async () => {
+                await act('/api/chat/profiles', { name: profile.name, settings: { protocol: 'openai-responses', reasoning_parameter: null, output_limit_field: null } }); await retest(); return false; } }));
     if (profile.protocol === 'openai-chat' && /reasoning_effort/.test(reason))
         return h('div', { class: 'fix' }, t('服务商不接受推理强度参数。可以在下方“兼容性”一节里关闭“向服务商发送推理强度参数”，或换一个档位。'));
     return null;
@@ -521,12 +525,13 @@ function connectionDetail(profile, rerender) {
             timeout: h('input', { class: 'input', type: 'number', min: 10, max: 300, value: profile.timeout ?? 120, oninput: dirty }),
             max_requests: h('input', { class: 'input', type: 'number', min: 1, placeholder: t('不限'), value: profile.max_requests ?? '', oninput: dirty }),
             effort_param: h('input', { type: 'checkbox', checked: profile.reasoning_parameter === 'reasoning_effort', onchange: dirty }),
-            native_search: select([['', t('自动判断')], ['off', t('不使用（改用 Chattera 检索）')], ['deepseek', t('DeepSeek 服务端搜索')], ['web_search_tool', t('web_search 工具（MiMo 等）')], ['google', t('Google Search（原生协议）')]], profile.native_search || '', { onchange: dirty }),
+            native_search: select([['', t('自动判断')], ['off', t('不使用（改用 Chattera 检索）')], ['deepseek', t('DeepSeek 服务端搜索')], ['web_search_tool', t('web_search 工具（OpenAI Responses、MiMo 等）')], ['google', t('Google Search（原生协议）')]], profile.native_search || '', { onchange: dirty }),
             google_auth: h('input', { type: 'checkbox', checked: profile.google_auth === 'bearer', onchange: dirty }),
         });
         f.effortRow = h('label', { class: 'radio' }, f.effort_param, t('向服务商发送推理强度参数'), h('small', null, t('reasoning_effort；模型有推理强度档位时需要开启')));
         const compat = {
             'openai-chat': h('div', null, field(t('输出上限的参数名'), f.output_limit_field, t('测试时报 max_tokens 不被接受，就改成 max_completion_tokens。')), f.effortRow),
+            'openai-responses': h('p', { class: 'hint' }, t('Responses 接口自带推理强度和输出上限参数，这里没有需要调整的。')),
             'anthropic-messages': field(t('工作区 ID（anthropic-workspace-id）'), f.anthropic_workspace, t('只有当 Key 没有绑定到某个工作区、Anthropic 要求带上工作区 ID 时才需要填写。ID 在 Anthropic Console 的工作区设置里，以 wrkspc_ 开头。')),
             'google-generate-content': h('label', { class: 'radio' }, f.google_auth, t('用 Bearer 方式发送密钥'), h('small', null, t('仅 Google 原生协议经中转站访问时需要'))),
         };
@@ -655,7 +660,7 @@ export async function roomModels(room, box, rerender) {
         route.addEventListener('change', () => apply(id, route.value, route.value === 'legacy' ? undefined : {}, t('{0} 在这个聊天里改用连接：{1}', label(id), connectionName(route.value))));
         effort.addEventListener('change', () => apply(id, now.backend, { ...(now.model ? { model: now.model } : {}), ...(effort.value ? { effort: effort.value } : {}) },
             t('{0} 的推理强度：{1}', label(id), effort.value ? effortName(effort.value) : t('默认'))));
-        const profile = now.profile, thinkable = profile?.kind === 'api' && profile.protocol !== 'openai-chat';
+        const profile = now.profile, thinkable = profile?.kind === 'api' && !profile.protocol?.startsWith('openai-');
         box.append(h('div', { class: 'room-model', style: { '--hue': color(id) } },
             h('div', { class: 'room-model-who' }, sigil(id), h('strong', null, label(id)),
                 pinned || moved ? h('button', { class: 'tiny-btn', title: t('回到这位参与者自己的设置'), onclick: () => apply(id, own?.connection || now.backend, {}, t('{0} 已恢复默认设置', label(id))) }, t('恢复默认')) : h('span', { class: 'hint' }, t('跟随默认')),

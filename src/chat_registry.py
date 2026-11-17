@@ -648,7 +648,7 @@ def install(runtime, app_module, cfg, config_path):
         source = str(raw.get('source', ''))
         denied = 'HTTP 401' in source or 'HTTP 403' in source
         reason = {'BLOCKED': _('这个连接还没有可用的密钥，或已停用。'),
-                  'UNKNOWN': _('服务商拒绝了这个密钥（401/403）。') if denied else _('服务商没有提供模型列表（') + source[:80] + _('）。')}.get(raw.get('status'))
+                  'UNKNOWN': _('服务商拒绝了这个密钥（401/403）。') if denied else _('服务商没有提供模型列表（') + source[:300] + _('）。')}.get(raw.get('status'))
         return dict(models=rows, ok=raw.get('status') == 'VERIFIED', reason=reason, auth=False if denied else None, source=_('服务商的 /models 接口'))
 
     @api.post('/api/chat/connections/probe')

@@ -15,6 +15,7 @@ from pathlib import Path
 import cli_adapters
 from cli_adapters import clean_environment, ROOM_TOOLS
 from chattera_paths import python_script
+from chat_secrets import redact
 
 TOOLS = list(ROOM_TOOLS)
 
@@ -171,8 +172,10 @@ class CLIBackend:
             for thread in readers:
                 thread.join(5)
             if proc.returncode or byte_count[0] > 2_000_000:
-                # No raw stderr logging: it can include unrelated configuration details.
-                raise RuntimeError(f"{self.name} CLI exit {proc.returncode}; no reply committed")
+                # No raw stderr logging: it can include unrelated configuration details. The CLI's own result text is kept.
+                said = self.adapter.failure_reason(b"".join(chunks).decode("utf-8", "replace")) if proc.returncode else None
+                said = "; CLI said: " + " ".join(str(redact(said)).split())[:200] if said else ""
+                raise RuntimeError(f"{self.name} CLI exit {proc.returncode}; no reply committed{said}")
             result = self.parse(b"".join(chunks).decode("utf-8", "replace"))
             if native: result['search_trace'] = trace.entries
             return result

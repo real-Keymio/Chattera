@@ -276,7 +276,14 @@ async def fetch_models(config,key):
             async with httpx.AsyncClient(timeout=min(config.get('timeout',15),15),follow_redirects=False,trust_env=False) as client:
                 for _ in range(4):
                     async with client.stream('GET',config['base_url'].rstrip('/')+'/models',params=params,headers=wire.headers(config,key)) as response:
-                        if response.status_code!=200: return {'models':[], 'status':'UNKNOWN', 'source':'models endpoint HTTP '+str(response.status_code), 'manual_model_allowed':True}
+                        if response.status_code!=200:
+                            said=''
+                            try:
+                                body=json.loads((await response.aread())[:20000]); error=body.get('error') if isinstance(body,dict) else None
+                                said=error.get('message') if isinstance(error,dict) else error if isinstance(error,str) else ''
+                            except (ValueError,TypeError,httpx.HTTPError):pass
+                            said=': '+' '.join(str(redact(said)).split())[:200] if said else ''
+                            return {'models':[], 'status':'UNKNOWN', 'source':'models endpoint HTTP '+str(response.status_code)+said, 'manual_model_allowed':True}
                         raw=bytearray()
                         async for block in response.aiter_bytes():
                             raw.extend(block)

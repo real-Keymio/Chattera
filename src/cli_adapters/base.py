@@ -101,6 +101,10 @@ class CLIAdapter:
                 return dict(found=True, executable=str(path.resolve()), source=source)
         return dict(found=False, executable=None, source=None)
 
+    def failure_reason(self, output):
+        """A short, user-readable reason from the output of a run that exited with an error, if the CLI gave one."""
+        return None
+
     def resolve(self, path):
         """Turn a package-manager shim into the real executable when the CLI ships one. Default: as found."""
         if path.suffix.lower() == '.ps1':

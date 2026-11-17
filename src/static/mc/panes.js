@@ -773,6 +773,9 @@ export function friendlyReason(reason = '') {
         return t('{0}（协议 {1}）。', text, stage[2]);
     }
     const cli = /(\w+) CLI exit (-?\d+)/.exec(reason);
+    const said = /; CLI said: (.*)$/.exec(reason)?.[1];
+    if (cli && said && /authenticat|log ?in|oauth|api key|credential/i.test(said)) return t('{0} CLI 没有登录或登录已失效，没有写入回复。请先在终端里登录这个 CLI（Claude Code：claude auth login），再重试。CLI 的提示：{1}', cli[1], said);
+    if (cli && said) return t('{0} CLI 异常退出（代码 {1}），没有写入回复。CLI 的提示：{2}', cli[1], cli[2], said);
     if (cli) return t('{0} CLI 异常退出（代码 {1}），没有写入回复。可能是订阅登录失效、模型 ID 不被接受或 CLI 已更新，可在终端里手动运行一次确认。', cli[1], cli[2]);
     if (/API cumulative request cap/.test(reason)) return t('被本机设置的 API 累计请求上限拦截（不是服务商余额不足）。');
     if (/incomplete or unsupported stop state/.test(reason)) return t('回答在完成前被截断（通常是达到了单次输出上限）。可在设置 → 模型与服务里调高这个连接的输出上限。');

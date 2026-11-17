@@ -17,10 +17,24 @@ class ClaudeCode(CLIAdapter):
         context_window=('UNKNOWN', 'reported per model by the model catalogue; not assumed'))
 
     def default_locations(self):
+        # Standalone installs first. The copy bundled with the Claude desktop app comes last: it works on its own once it
+        # has been signed in (`claude.exe auth login`; the sign-in is shared through %USERPROFILE%\.claude), but its
+        # folder changes with every app update, so a missing path is looked up again at the next start.
         return [r'%USERPROFILE%\.local\bin\claude.exe',             # native installer
                 r'%LOCALAPPDATA%\Programs\claude\claude.exe',
                 r'%APPDATA%\npm\claude.cmd',                         # npm global install
                 r'%LOCALAPPDATA%\Claude*\claude-code\*\*\claude.exe']  # copy bundled with the Claude desktop app
+
+    def failure_reason(self, output):
+        """The CLI's own error text from a failed print-mode run (e.g. "Failed to authenticate: …"), or None."""
+        for line in output.splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(event, dict) and event.get('type') == 'result' and event.get('is_error') and isinstance(event.get('result'), str):
+                return event['result']
+        return None
 
     # ---- Model List ----
     def list_models(self, cfg, timeout=40):

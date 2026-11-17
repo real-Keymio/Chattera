@@ -87,7 +87,9 @@ export function effectiveModel(room, id) {
 /** 低 / 中 / 高 … for display; the value sent to the provider is never translated. */
 export const effortName = level => level ? (S.models?.effort_labels?.[String(level).toLowerCase()] || level) : '';
 export const isAI = sender => ALL.includes(family(sender));
-export const family = sender => String(sender || '').toLowerCase().replace(/-\d+$/, '');
+// A participant's own id wins: model ids such as claude-fable-5-2 end in "-<digit>" too. Only an unknown
+// "name-2" (a second instance of a known participant) is folded into its family.
+export const family = sender => { const id = String(sender || '').toLowerCase(); return ALL.includes(id) ? id : id.replace(/-\d+$/, ''); };
 export const roomOf = channel => S.rooms.find(r => r.channel === channel);
 export const activeRoom = () => roomOf(S.active);
 export const audienceOf = msg => msg?.metadata?.visibility || 'public';

@@ -940,7 +940,8 @@ export function initPanes() {
     let namesShown = '';
     on('models', () => {
         const names = (S.models?.participants || []).map(p => p.id + '=' + p.label + (p.retired ? '-' : '') + (p.hidden ? '~' : '')).join('|');
-        if (names !== namesShown && namesShown) { capture(); panes.forEach(p => p.render({ restore: true })); }
+        // Also on the first list when the history was drawn before it arrived: until then only the four default ids count as participants.
+        if (names !== namesShown && (namesShown || S.historyReady)) { capture(); panes.forEach(p => p.render({ restore: true })); }
         namesShown = names;
         panes.forEach(p => p.renderHead());
     });

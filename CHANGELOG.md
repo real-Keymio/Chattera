@@ -11,6 +11,7 @@
 - A connection test that fails with OpenAI's "use /v1/responses" message offers the switch in one click.
 - **Fix:** replies from a participant whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own
   messages; on a slow start, other added participants could look the same until the next change.
+- **Fix:** menus opened inside Settings (the ⋯ menu on each model) were shown but could not be clicked.
 
 ## 0.1.2 — Easier model settings, clearer errors
 

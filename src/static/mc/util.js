@@ -142,6 +142,9 @@ export function toast(message, kind = 'info', ms) {
 }
 
 const layer = () => document.getElementById('layer');
+// While a modal dialog is open everything outside it is inert, even what is drawn above it: a menu opened from inside
+// one must live in it to be clickable (still a popover in the top layer, so it is drawn above the dialog).
+const menuHost = () => [...document.querySelectorAll('dialog')].filter(d => d.open && d.matches(':modal')).at(-1) || layer();
 
 /** Popup menu anchored to an element or a point. items: {label, icon, action, danger, disabled, hint} | 'sep' | {title}. */
 export function menu(anchor, items) {
@@ -158,7 +161,7 @@ export function menu(anchor, items) {
         }, item.icon ? icon(ICONS[item.icon] || item.icon) : null, h('span', { class: 'menu-label' }, item.label),
             item.note ? h('span', { class: 'menu-note' }, item.note) : null));
     }
-    layer().append(el);
+    menuHost().append(el);
     raise(el);
     place(el, anchor);
     setTimeout(() => document.addEventListener('mousedown', outside, true));
@@ -168,7 +171,7 @@ export function menu(anchor, items) {
 function outside(event) { if (!event.target.closest('.menu')) closeMenus(); }
 function escape(event) { if (event.key === 'Escape') closeMenus(); }
 export function closeMenus() {
-    document.querySelectorAll('#layer > .menu').forEach(m => m.remove());
+    document.querySelectorAll('#layer > .menu, dialog > .menu').forEach(m => m.remove());
     document.removeEventListener('mousedown', outside, true);
     document.removeEventListener('keydown', escape, true);
 }

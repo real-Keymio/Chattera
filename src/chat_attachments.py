@@ -14,7 +14,7 @@ DOCUMENT_EXTENSIONS={'.pdf','.docx','.txt','.md','.rtf','.html','.htm','.csv','.
 EXTENSIONS=IMAGE_EXTENSIONS|DOCUMENT_EXTENSIONS
 PARSER_VERSION='r10-1'
 WORKER_ENV=('SYSTEMROOT','WINDIR','TEMP','TMP','PATH','PYTHONUTF8')
-IMAGE_POLICY=dict(max_file_bytes=2*1024*1024,max_edge=2560,max_pixels=4_000_000,max_count=4,max_total_bytes=12*1024*1024)
+IMAGE_POLICY=dict(max_file_bytes=2*1024*1024,max_edge=2560,max_pixels=4_000_000,max_count=12,max_total_bytes=24*1024*1024)  # what is sent to the model per image: providers cap images at ~5 MB
 
 
 class Attachments:
@@ -37,7 +37,7 @@ class Attachments:
             reason=proc.stderr.decode('utf-8',errors='replace').strip()
             known=('Image exceeds 40 MP','Long image requires cropping into readable sections','Compressed image exceeds transfer limit; crop image')
             raise ValueError(reason if reason in known else 'Image preparation failed or exceeds limits')
-        if len(proc.stdout)>4_000_000:raise ValueError('Image preparation exceeds transfer limits')
+        if len(proc.stdout)>96_000_000:raise ValueError('Image preparation exceeds transfer limits')
         result=json.loads(proc.stdout);raw=base64.b64decode(result.pop('encoded'))
         folder.mkdir(parents=True,exist_ok=True)
         target=folder/(key+'.'+{'PNG':'png','JPEG':'jpg','WEBP':'webp'}[result['format']])
@@ -51,11 +51,11 @@ class Attachments:
         if not isinstance(url,str) or not re.fullmatch(r'/uploads/[a-f0-9]{32}\.[a-z0-9]+',url): raise ValueError('Invalid attachment reference')
         path=(self.upload/url.split('/')[-1]).resolve()
         if path.parent!=self.upload or not path.is_file() or path.suffix.lower() not in EXTENSIONS: raise ValueError('Unsupported or unavailable attachment')
-        if path.stat().st_size>10*1024*1024: raise ValueError('Attachment exceeds 10 MB')
+        if path.stat().st_size>50*1024*1024: raise ValueError('Attachment exceeds 50 MB')
         return path
 
     def validate(self,channel,scope,attachments):
-        if not isinstance(attachments,list) or len(attachments)>4: raise ValueError('At most four attachments per message')
+        if not isinstance(attachments,list) or len(attachments)>12: raise ValueError('At most 12 attachments per message')
         from chat_visibility import audience
         for att in attachments:
             if not isinstance(att,dict): raise ValueError('Invalid attachment')
@@ -88,7 +88,7 @@ class Attachments:
         if cached.exists():
             value=json.loads(cached.read_text('utf-8'))
             if not (ocr and str(value.get('ocr_status','')).startswith('skipped')): return value
-        options=dict(ocr_seconds=max(0,timeout-20),ocr_pages=40) if ocr else {}
+        options=dict(ocr_seconds=max(0,timeout-20),ocr_pages=300) if ocr else {}
         value=self.worker(path,options,timeout); value.update(content_sha256=digest,parser_version=PARSER_VERSION)
         cached.parent.mkdir(parents=True,exist_ok=True)
         # Only server-generated cache paths; cache never served directly.
@@ -98,7 +98,7 @@ class Attachments:
     def page_image(self,att,page):
         """PNG rendering of one PDF page for the local user's preview; a model only gets it if the user attaches it."""
         path=self.path(att)
-        if path.suffix.lower()!='.pdf' or type(page) is not int or not 1<=page<=500: raise ValueError('Only PDF pages can be rendered')
+        if path.suffix.lower()!='.pdf' or type(page) is not int or not 1<=page<=5000: raise ValueError('Only PDF pages can be rendered')
         digest=hashlib.sha256(path.read_bytes()).hexdigest()
         target=self.cache/'pages'/f'{digest}-{page}.png'
         if target.exists(): return target.read_bytes()
@@ -147,7 +147,7 @@ def describe(value):
     return value.get('format_note') or 'extracted text'
 
 
-def read_frozen(snapshot,message_id,index=0,unit=1,query='',limit=4000):
+def read_frozen(snapshot,message_id,index=0,unit=1,query='',limit=20000):
     value=snapshot.get('attachment_content',{}).get(f'{message_id}:{index}')
     if not value: return {'error':'Attachment unavailable in this snapshot'}
     if value['kind']!='text': return {'kind':value['kind'],'note':'No text available; image pixels require native multimodal input'}
@@ -169,7 +169,7 @@ def read_frozen(snapshot,message_id,index=0,unit=1,query='',limit=4000):
         'note':note}
 
 
-def excerpts(snapshot,message_ids,limit=4000):
+def excerpts(snapshot,message_ids,limit=20000):
     result=[]
     for value in snapshot.get('attachment_content',{}).values():
         if value['message_id'] not in message_ids: continue

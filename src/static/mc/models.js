@@ -521,8 +521,8 @@ function connectionDetail(profile, rerender) {
             protocol: select(Object.entries(PROTOCOL), profile.protocol, { onchange: () => { dirty(); showCompat(); } }),
             output_limit_field: select([['max_tokens', t('max_tokens（大多数服务）')], ['max_completion_tokens', t('max_completion_tokens（OpenAI 较新的模型）')]], profile.output_limit_field || 'max_tokens', { onchange: dirty }),
             anthropic_workspace: h('input', { class: 'input', value: profile.anthropic_workspace || '', placeholder: 'wrkspc_…', maxLength: 100, dataset: { field: 'anthropic_workspace' }, oninput: dirty }),
-            max_output_tokens: h('input', { class: 'input', type: 'number', min: 256, max: 32768, value: profile.max_output_tokens ?? 8192, oninput: dirty }),
-            timeout: h('input', { class: 'input', type: 'number', min: 10, max: 300, value: profile.timeout ?? 120, oninput: dirty }),
+            max_output_tokens: h('input', { class: 'input', type: 'number', min: 256, max: 128000, value: profile.max_output_tokens ?? 32000, oninput: dirty }),
+            timeout: h('input', { class: 'input', type: 'number', min: 10, max: 3600, value: profile.timeout ?? 900, oninput: dirty }),
             max_requests: h('input', { class: 'input', type: 'number', min: 1, placeholder: t('不限'), value: profile.max_requests ?? '', oninput: dirty }),
             effort_param: h('input', { type: 'checkbox', checked: profile.reasoning_parameter === 'reasoning_effort', onchange: dirty }),
             native_search: select([['', t('自动判断')], ['off', t('不使用（改用 Chattera 检索）')], ['deepseek', t('DeepSeek 服务端搜索')], ['web_search_tool', t('web_search 工具（OpenAI Responses、MiMo 等）')], ['google', t('Google Search（原生协议）')]], profile.native_search || '', { onchange: dirty }),
@@ -547,7 +547,7 @@ function connectionDetail(profile, rerender) {
             h('dl', { class: 'kv' }, h('dt', null, t('连接 ID')), h('dd', null, h('code', null, profile.name)), h('dt', null, t('密钥位置')), h('dd', null, profile.key_source || '—'),
                 u ? [h('dt', null, t('本机累计')), h('dd', null, t('请求 {0} 次 · 输入 {1} / 输出 {2} Token（服务商返回值；金额无法从这里得知）', fmtNum(u.requests), fmtNum(u.prompt_tokens), fmtNum(u.completion_tokens)))] : null));
     } else {
-        f.timeout = h('input', { class: 'input', type: 'number', min: 10, max: 1800, value: profile.timeout ?? 120, oninput: dirty });
+        f.timeout = h('input', { class: 'input', type: 'number', min: 10, max: 3600, value: profile.timeout ?? 120, oninput: dirty });
         f.native_search = select([['', t('使用（独立检索时）')], ['off', t('不使用（改用 Chattera 检索）')]], profile.native_search === 'off' ? 'off' : '', { onchange: dirty });
         sections.push(h('section', { class: 'mm-sec' }, h('h4', null, t('本机订阅')),
             h('p', { class: 'hint' }, t('通过本机已登录的官方命令行调用，不使用 API Key，也不读取它的登录凭据。{0}', profile.version ? t('当前版本：') + profile.version + t('。') : '')),

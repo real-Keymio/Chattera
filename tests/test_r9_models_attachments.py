@@ -176,7 +176,7 @@ def test_image_wire_input_capability_budget_and_path(env,provider,docs):
         with pytest.raises(ValueError,match='image input'):r.tasks.start('general','claude',q)
     for url in ('/uploads/../secret.txt','https://evil/x.pdf','/uploads/a.pdf'):
         with pytest.raises(ValueError):r.attachments.path({'url':url})
-    p,a=docs('.txt',b'x'*(10*1024*1024+1))
+    p,a=docs('.txt',b'x'*(50*1024*1024+1))
     with pytest.raises(ValueError):r.attachments.path(a)
     p,a=docs('.pdf',b'not PDF')
     with pytest.raises(ValueError):r.attachments.extract('general',a)

@@ -13,10 +13,19 @@
   emptied in one step. Everything recorded only for that chat goes with it: messages and versions, attachments and their
   parse cache, reply records, summaries, automatic memory, shared-retrieval bundles, canvas and research library. Cached
   library files are removed only when no other chat uses them.
-- **Research replies no longer fail for searching too much.** A reply may make 24 search/read calls (was 8, which one
-  round of parallel searches could use up). When the budget or the request rounds run out, the model gets one last
-  request with tool calls switched off and answers from what it found, saying what it could not check, instead of the
-  whole reply failing. API connections with tool calls get up to 10 request rounds.
+- **Room to work.** Limits sized for long research rather than quick chats:
+  - tool calls per reply: 60 search/read calls (was 8) and 80 library calls; up to 20 request rounds on tool-enabled API connections;
+  - one read returns 20,000 characters of a page or paper (was 5,200); searches return up to 20 results with abstracts up to 3,000 characters;
+  - output limit 32,000 tokens by default, up to 128,000; API timeout 900 s by default, up to 3,600 s;
+  - older long messages are shown in full up to 32 KB before being excerpted (scaled to the model's budget);
+  - attachments: 12 per message, 50 MB each; OCR up to 300 pages;
+  - automatic memory up to 40,000 bytes; 50 pins of up to 8,000 characters; longer library notes and quotes.
+- **Nothing is thrown away for hitting a limit.** When the tool budget or the request rounds run out, the model gets one last request
+  with tool calls switched off and answers from what it found. An answer that reaches the output limit is kept, with a note that it
+  was cut off.
+- **Caches live with the library.** Parsed attachments, rendered PDF pages and downloaded web pages and PDFs are kept in
+  `<library folder>\cache`, so a library in a cloud-synced folder (e.g. Google Drive) takes them along; they fall back to the local
+  data folder while that folder is unreachable. The library cache budget defaults to 20 GiB.
 - **Branches are independent copies**: a branch now also gets its own copy of the research library, so deleting either
   chat never affects the other.
 - **Fix:** replies from a participant whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own

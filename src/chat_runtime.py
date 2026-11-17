@@ -34,13 +34,16 @@ class ChatRuntime:
         self.builder.attachments = self.attachments
         from chat_evidence import Evidence
         self.evidence = Evidence(data_dir, self.attachments)
+        self.data_dir = Path(data_dir)
+        self.place_caches()
         self.builder.evidence = self.evidence
         self.builder.lens_for = self.lens_for
         upload_dir = str(self.attachments.upload)
         def retrieval_info():
             search = self.registry.search_settings()
             info = dict(data_dir=str(Path(data_dir).resolve()), upload_dir=upload_dir, parser_dependencies=cfg.get('parser_dependencies', ''),
-                        web_provider=search['web_provider'], reader_fallback=search['reader_fallback'])
+                        web_provider=search['web_provider'], reader_fallback=search['reader_fallback'],
+                        attachment_cache=str(self.attachments.cache), web_cache=str(self.evidence.cache))
             for field, name in (('web_key_file', 'search_' + search['web_provider']), ('openalex_key_file', 'search_openalex')):
                 path = self.registry.private / (name + '.key')
                 if path.exists(): info[field] = str(path)
@@ -78,6 +81,22 @@ class ChatRuntime:
                     for t in self.tasks.list()), label=self.labels.get(model, info.get("label", model)), color=info.get("color", "#888"), role="Research Chat")
             return result
         app_module.agents.get_status = status
+
+    def place_caches(self):
+        """Rebuildable caches (parsed attachments, rendered PDF pages, downloaded web pages and PDFs) live in <library folder>/cache,
+        so a library kept in a cloud-synced folder takes them along. Without a library folder, or while it is unreachable
+        (e.g. the cloud drive is not mounted), they stay in the local data folder."""
+        root = (self.registry.data.get('library') or {}).get('root') or os.environ.get('CHATTERA_LIBRARY_DIR')
+        target = None
+        if root:
+            try:
+                if Path(root).is_dir():
+                    target = Path(root) / 'cache'
+                    for sub in ('attachments', 'web'): (target / sub).mkdir(parents=True, exist_ok=True)
+            except OSError: target = None
+        self.attachments.cache = target / 'attachments' if target else self.data_dir / 'attachment-cache'
+        self.evidence.cache = target / 'web' if target else self.data_dir / 'evidence' / 'cache'
+        return target
 
     @property
     def defaults(self):

@@ -67,3 +67,33 @@ def test_final_request_switches_tools_off_in_every_protocol(protocol, check):
     assert 'tool_choice' not in wire.body(cfg, messages, schema) and 'toolConfig' not in wire.body(cfg, messages, schema)
     wire.final_note(cfg, messages, 'answer now')
     assert 'answer now' in json.dumps(messages)
+
+
+@pytest.mark.parametrize('protocol,value', [
+    ('openai-chat', {'model': 'm', 'choices': [{'finish_reason': 'length', 'message': {'role': 'assistant', 'content': 'long text'}}]}),
+    ('openai-responses', {'model': 'm', 'status': 'incomplete', 'incomplete_details': {'reason': 'max_output_tokens'},
+                          'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': 'long text'}]}]}),
+    ('anthropic-messages', {'model': 'm', 'stop_reason': 'max_tokens', 'content': [{'type': 'text', 'text': 'long text'}]}),
+    ('google-generate-content', {'modelVersion': 'm', 'candidates': [{'finishReason': 'MAX_TOKENS', 'content': {'role': 'model', 'parts': [{'text': 'long text'}]}}]})])
+def test_answer_cut_at_the_output_limit_is_kept(protocol, value):
+    parsed = wire.consume(dict(protocol=protocol), value)
+    assert parsed['truncated'] and parsed['text'] == 'long text'
+
+
+def test_cut_answer_is_returned_with_a_note(tmp_path, monkeypatch):
+    def handler(request):
+        return httpx.Response(200, json={'model': 'm', 'choices': [{'finish_reason': 'length', 'message': {'role': 'assistant', 'content': 'partial answer'}}]})
+    result = run(tmp_path, monkeypatch, handler)
+    assert result['truncated'] and result['text'].startswith('partial answer') and '截断' in result['text']
+
+
+def test_caches_follow_the_library_folder(tmp_path):
+    from types import SimpleNamespace
+    from chat_runtime import ChatRuntime
+    runtime = SimpleNamespace(registry=SimpleNamespace(data={'library': {'root': str(tmp_path / 'cloud')}}), data_dir=tmp_path / 'data',
+                              attachments=SimpleNamespace(cache=None), evidence=SimpleNamespace(cache=None))
+    assert ChatRuntime.place_caches(runtime) is None   # folder missing (cloud drive not mounted): local
+    assert runtime.attachments.cache == tmp_path / 'data' / 'attachment-cache'
+    (tmp_path / 'cloud').mkdir()
+    assert ChatRuntime.place_caches(runtime) == tmp_path / 'cloud' / 'cache'
+    assert runtime.attachments.cache == tmp_path / 'cloud' / 'cache' / 'attachments' and runtime.evidence.cache == tmp_path / 'cloud' / 'cache' / 'web'

@@ -29,7 +29,7 @@ def public_summary(entry, channel, get_message):
     ):
         return None
     if not isinstance(sections, dict) or not sections or not isinstance(author, str) or any(
-        key not in PUBLIC_SECTIONS or not isinstance(value, str) or len(value) > 6000
+        key not in PUBLIC_SECTIONS or not isinstance(value, str) or len(value) > 20000
         for key, value in sections.items()
     ):
         return None
@@ -67,7 +67,7 @@ class SummaryStore:
         import re
         from rolling_memory import fingerprint
         if set(sections)!=set(PUBLIC_SECTIONS):raise ValueError('All memory sections required')
-        if len(json.dumps(sections,ensure_ascii=False).encode())>6000:raise ValueError('Automatic summary exceeds 6000-byte memory layer')
+        if len(json.dumps(sections,ensure_ascii=False).encode())>40000:raise ValueError('Automatic summary exceeds 40000-byte memory layer')
         for value in sections.values():
             if not isinstance(value,str):raise ValueError('Memory sections must be text')
             citations={int(i) for i in re.findall(r'#(\d+)',value)}
@@ -84,8 +84,8 @@ class SummaryStore:
         if not public_summary(candidate, channel, get_message):
             raise ValueError("Summary evidence must belong to this room")
         text = "\n".join(f"{k}: {v}" for k, v in sections.items())
-        if not text.strip() or len(text) > 6000:
-            raise ValueError("Summary exceeds 6000 characters or is empty")
+        if not text.strip() or len(text) > 20000:
+            raise ValueError("Summary exceeds 20000 characters or is empty")
         from chat_rooms import append_event
         with self._lock:
             version = 1 + max((v["version"] for v in self._versions if v["channel"] == channel), default=0)

@@ -326,8 +326,8 @@ class ContextBuilder:
                 continue
             projected=self.project(msg)
             self.attach_sources(projected, msg)
-            if context_policy and context_policy.get('context_mode') not in ('maximum','1m') and len(projected['text'].encode('utf-8'))>4000:
-                raw=projected['text'];excerpt=raw.encode('utf-8')[:4000].decode('utf-8',errors='ignore')
+            if context_policy and context_policy.get('context_mode') not in ('maximum','1m') and len(projected['text'].encode('utf-8'))>max(4000,min(32000,int(limit*.25))):
+                raw=projected['text'];excerpt=raw.encode('utf-8')[:max(4000,min(32000,int(limit*.25)))].decode('utf-8',errors='ignore')
                 projected['text']=excerpt
                 projected['excerpt']=dict(start=0,end=len(excerpt),total_characters=len(raw),version=(msg.get('metadata') or {}).get('version',1),full_text='chat_read by message ID')
             payload["history"].insert(0, projected)

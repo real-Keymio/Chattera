@@ -264,7 +264,7 @@ class TaskManager:
             task['requested_model']=effective_cfg.get('model','UNKNOWN')
             task['requested_effort']=task['effort']
             task['requested_thinking']=effective_cfg.get('thinking')
-            task["configuration"] = redact(dict(effective_cfg, max_tool_calls=8,
+            task["configuration"] = redact(dict(effective_cfg, max_tool_calls=__import__('chat_tools').TOOL_BUDGET,
                                           tool_result_chars=6500, output_capture_bytes=2000000))
             task["input_sha256"] = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
             self.tasks[task_id] = task

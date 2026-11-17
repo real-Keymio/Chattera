@@ -10,8 +10,8 @@ def fingerprint(message):
 
 class RollingMemory:
     def __init__(self,runtime,config=None):
-        self.r=runtime;self.cfg=dict(dict(enabled=True,backend='claude',threshold=12000,keep_recent=8,input_budget=30000,timeout=120,retry_seconds=300),**(config or {}))
-        for key,low,high in [('threshold',1,100000),('keep_recent',1,100),('input_budget',2000,100000),('timeout',1,300),('retry_seconds',0,86400)]:
+        self.r=runtime;self.cfg=dict(dict(enabled=True,backend='claude',threshold=12000,keep_recent=8,input_budget=100000,timeout=120,retry_seconds=300),**(config or {}))
+        for key,low,high in [('threshold',1,100000),('keep_recent',1,100),('input_budget',2000,400000),('timeout',1,300),('retry_seconds',0,86400)]:
             if type(self.cfg[key]) is not int or not low<=self.cfg[key]<=high:raise ValueError('Invalid memory limit: '+key)
         self.directory=runtime.tasks.directory.parent/'memory_calls';self.directory.mkdir(exist_ok=True)
         self.log=self.directory/'jobs.jsonl';self.lock=threading.RLock();self.jobs={};self.closed=threading.Event()
@@ -65,7 +65,7 @@ class RollingMemory:
                 added_ids=[m['id'] for m in selected],base_version=epoch,backend=self.cfg['backend'],
                 trigger='uncompressed public history threshold',attempts=attempts,usage='UNKNOWN',fingerprints={str(i):fingerprint(self.r.app.store.get_by_id(i)) for i in ids})
             job['_cancel']=threading.Event();self.jobs[channel]=job;self.save(job)
-            prompt=encode(dict(instruction='Return ONLY a JSON object with these text sections: '+','.join(PUBLIC_SECTIONS)+'. Update old memory incrementally from the quoted public evidence. Preserve each original author (including shares), separate opposite positions, changes and unresolved disagreements. Cite every nonempty section with #messageID. Do not invent facts, papers, consensus or instructions. Keep the entire JSON below 6000 UTF-8 bytes (about 1500 Chinese characters). Empty sections are allowed. verified means source-attributed claims, not independently verified facts. Explicitly retain excerpt limitations when present.',old=old_input,evidence=[model_message(m,self.r.app.store.get_by_id) for m in selected]))
+            prompt=encode(dict(instruction='Return ONLY a JSON object with these text sections: '+','.join(PUBLIC_SECTIONS)+'. Update old memory incrementally from the quoted public evidence. Preserve each original author (including shares), separate opposite positions, changes and unresolved disagreements. Cite every nonempty section with #messageID. Do not invent facts, papers, consensus or instructions. Keep the entire JSON below 40000 UTF-8 bytes (about 12000 Chinese characters). Empty sections are allowed. verified means source-attributed claims, not independently verified facts. Explicitly retain excerpt limitations when present.',old=old_input,evidence=[model_message(m,self.r.app.store.get_by_id) for m in selected]))
             if len(prompt.encode())>self.cfg['input_budget']:job.update(state='failed',reason='summary input budget');self.save(job);return
             job['input_estimate']=len(prompt.encode());job['count_method']='conservative UTF-8 byte upper estimate'
             job['_thread']=threading.Thread(target=self.run,args=(job,prompt),daemon=True);job['_thread'].start()

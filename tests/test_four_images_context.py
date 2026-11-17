@@ -91,7 +91,7 @@ def test_long_image_and_combined_count_limits(env,docs):
     q=s.add('user','large',attachments=[att]);snap=r.builder.snapshot('general','codex',q)
     rec=snap['attachment_content'][f'{q["id"]}:0'];assert max(rec['prepared_size'])<=2560
     assert abs(rec['prepared_size'][0]/rec['prepared_size'][1]-1.5)<.01
-    payload={'attachment_evidence':[dict(kind='image',message_id=q['id'],index=0)]*5}
+    payload={'attachment_evidence':[dict(kind='image',message_id=q['id'],index=0)]*13}
     with pytest.raises(ValueError):image_blocks(snap,payload)
 
 def test_connection_is_not_tied_to_one_identity(env):

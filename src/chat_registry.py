@@ -376,7 +376,7 @@ def install(runtime, app_module, cfg, config_path):
                 if existing and existing.get('type') not in API_TYPES: raise ValueError('That name belongs to a subscription CLI')
                 before = copy.deepcopy(registry.data)
                 if existing is None:
-                    changes = dict(dict(type='api', protocol='openai-chat', enabled=True, timeout=120, max_output_tokens=8192, max_requests=None,
+                    changes = dict(dict(type='api', protocol='openai-chat', enabled=True, timeout=900, max_output_tokens=32000, max_requests=None,
                                         max_requests_per_task=1, tools=False, images=False, key_file=str(registry.key_file(name))), **changes)
                     if os.environ.get('MULTICHAT_ALLOW_LOOPBACK_API') == '1' and re.match(r'http://127\.0\.0\.1[:/]', str(changes.get('base_url', ''))):
                         changes['mock'] = True
@@ -394,7 +394,7 @@ def install(runtime, app_module, cfg, config_path):
                     registry.write_key(name, Path(other['key_file']).read_text('utf-8').strip())
                 for key in [k for k, v in changes.items() if v is None and k not in ('max_requests', 'thinking')]: changes.pop(key)
                 if changes.get('thinking') is None: changes.pop('thinking', None)
-                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 10: changes['max_requests_per_task'] = 10
+                if changes.get('tools') and changes.get('max_requests_per_task', 1) < 20: changes['max_requests_per_task'] = 20
                 registry.data['profiles'][name] = changes
                 model = changes.get('model') or (existing or {}).get('model')
                 entry = registry.data['catalog'].setdefault(name, {}).get(model)
@@ -544,7 +544,7 @@ def install(runtime, app_module, cfg, config_path):
                     if fitted != current: changes['effort'] = fitted
                 if 'model' in changes and not re.fullmatch(MODEL, str(changes['model'])): raise ValueError('Invalid model ID')
                 if 'effort' in changes and not re.fullmatch(r'[A-Za-z0-9_-]{1,40}', str(changes['effort'])): raise ValueError('Invalid effort')
-                if 'timeout' in changes and (type(changes['timeout']) is not int or not 10 <= changes['timeout'] <= 1800): raise ValueError('Timeout: 10–1800 seconds')
+                if 'timeout' in changes and (type(changes['timeout']) is not int or not 10 <= changes['timeout'] <= 3600): raise ValueError('Timeout: 10–3600 seconds')
                 before = copy.deepcopy(registry.data)
                 registry.data['cli'][name] = dict(registry.data['cli'].get(name, {}), **changes)
                 try:
@@ -833,7 +833,7 @@ def install(runtime, app_module, cfg, config_path):
         body = await request.json()
         try:
             name, method = str(body.get('name', '')).strip(), str(body.get('method', '')).strip()
-            if not 1 <= len(name) <= 40 or not 1 <= len(method) <= 4000: raise ValueError('A lens needs a name (≤40) and a method description (≤4000 characters)')
+            if not 1 <= len(name) <= 40 or not 1 <= len(method) <= 12000: raise ValueError('A lens needs a name (≤40) and a method description (≤12000 characters)')
             if redact(method) != method: raise ValueError('Secret values cannot be stored in a lens')
             with registry.lock:
                 lens_id = body.get('id')

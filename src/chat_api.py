@@ -58,8 +58,8 @@ class APIBackend:
         limit=cfg.setdefault('max_requests',10)
         if limit is not None and (type(limit) is not int or not 1<=limit<=100000):
             raise ValueError('Invalid API limit: max_requests')
-        for key, default, upper in [('timeout',120,300),('max_output_tokens',2048,32768),
-                                    ('max_requests_per_task',9,20)]:
+        for key, default, upper in [('timeout',120,3600),('max_output_tokens',2048,128000),
+                                    ('max_requests_per_task',9,40)]:
             value = cfg.setdefault(key,default)
             if type(value) is not int or not 1 <= value <= upper:
                 raise ValueError('Invalid API limit: '+key)
@@ -216,7 +216,10 @@ class APIBackend:
                             wire.final_note(cfg,messages,'Tool budget for this reply is used up. Do not call any more tools. Write your final answer now from what you have found, '
                                                          'and say plainly what you could not check or read.')
                         continue
-                    return redact(dict(text=parsed['text'],model=parsed['model'],requested_model=cfg['model'],
+                    if parsed.get('truncated'):
+                        from chattera_i18n import _
+                        parsed['text']=parsed['text'].rstrip()+'\n\n'+_('（回答写到这里达到了单次输出上限，后面的内容被截断。可以在连接设置里调高“单次输出上限”，或让它接着写。）')
+                    return redact(dict(text=parsed['text'],model=parsed['model'],requested_model=cfg['model'],truncated=bool(parsed.get('truncated')),
                                 requested_effort=cfg.get('effort',cfg.get('reasoning_value','UNKNOWN')),
                                 usage=totals if usage_known else 'UNKNOWN',last_response_usage=usage,response_usages=response_usages,
                                 usage_fields=dict(input_tokens=totals['prompt_tokens'] if usage_known else 'UNKNOWN',

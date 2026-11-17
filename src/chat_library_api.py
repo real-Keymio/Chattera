@@ -158,6 +158,7 @@ def install(runtime, app_module, data_dir):
                     runtime.library = Library(root, settings)   # existing files are not moved: the old folder stays where it is
                 registry.data['library'] = {k: v for k, v in value.items() if v is not None}
                 registry.save()
+                runtime.place_caches()   # caches follow the library folder
             await asyncio.to_thread(runtime.library.cleanup)
             return runtime.library.stats()
         except (ValueError, OSError) as exc: return fail(exc)

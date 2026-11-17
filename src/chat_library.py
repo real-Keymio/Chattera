@@ -25,7 +25,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from chattera_i18n import _
 
-DEFAULT_LIMIT = 1 << 30   # 1 GiB of cache before the least recently used unkept files are removed
+DEFAULT_LIMIT = 20 << 30   # 20 GiB of cache before the least recently used unkept files are removed
 LEVELS = ('metadata', 'abstract', 'page', 'fulltext')   # how much of the source has actually been obtained
 _lock = threading.RLock()
 
@@ -179,7 +179,7 @@ class Library:
         self.keep(room_id, item_id, False)
 
     def note(self, room_id, item_id, author, text, shared=False, origin=None):
-        text = str(text or '').strip()[:6000]
+        text = str(text or '').strip()[:20000]
         if not text: return None
         def change(data):
             if item_id not in data['items']: raise ValueError('Unknown source')
@@ -195,7 +195,7 @@ class Library:
     def cite(self, room_id, item_id, by, claim, locator='', quote='', origin=None):
         def change(data):
             if item_id not in data['items']: raise ValueError('Unknown source')
-            entry = dict(id='c' + uuid.uuid4().hex[:10], item_id=item_id, by=by, claim=str(claim or '')[:600], locator=str(locator or '')[:200], quote=str(quote or '')[:1200],
+            entry = dict(id='c' + uuid.uuid4().hex[:10], item_id=item_id, by=by, claim=str(claim or '')[:2000], locator=str(locator or '')[:400], quote=str(quote or '')[:4000],
                          at=time.time(), **(origin or {}))
             if any(c['item_id'] == item_id and c['by'] == by and c['claim'] == entry['claim'] and c.get('task_id') == entry.get('task_id') for c in data['citations']): return None
             data['citations'].append(entry)
@@ -281,7 +281,7 @@ class Library:
             self._write(self.root / 'files.json', index)
         return item
 
-    def text(self, room_id, item_id, offset=0, size=6000):
+    def text(self, room_id, item_id, offset=0, size=20000):
         item = self.load(room_id)['items'].get(item_id)
         path = self._path(((item or {}).get('file') or {}).get('text_sha'))
         if not path: return None

@@ -117,7 +117,7 @@ def consume(cfg,value,native=None):
         choice=value['choices'][0];msg=choice['message'];calls=[{'id':c['id'],'name':c['function']['name'],'args':json.loads(c['function']['arguments'])} for c in (msg.get('tool_calls') or [])]
         state={'role':'assistant','content':msg.get('content')}
         if calls:state['tool_calls']=msg['tool_calls']
-        finish=choice.get('finish_reason');ok=finish=='tool_calls' if calls else finish=='stop'
+        finish=choice.get('finish_reason');ok=finish=='tool_calls' if calls else finish=='stop';cut=finish=='length'
         text=msg.get('content');usage=value.get('usage',{});counts={'prompt_tokens':usage.get('prompt_tokens'),'completion_tokens':usage.get('completion_tokens')}
         actual=value.get('model','UNKNOWN')
         from chat_search import from_openai,LABEL
@@ -127,7 +127,7 @@ def consume(cfg,value,native=None):
         calls=[{'id':b['call_id'],'name':b['name'],'args':json.loads(b.get('arguments') or '{}')} for b in items if b.get('type')=='function_call']
         messages=[b for b in items if b.get('type')=='message']
         text=''.join(c.get('text','') for b in messages for c in b.get('content') or [] if c.get('type')=='output_text')
-        finish=value.get('status');ok=finish=='completed'
+        finish=value.get('status');ok=finish=='completed';cut=finish=='incomplete' and (value.get('incomplete_details') or {}).get('reason')=='max_output_tokens'
         usage=value.get('usage') or {};counts={'prompt_tokens':usage.get('input_tokens'),'completion_tokens':usage.get('output_tokens')}
         actual=value.get('model','UNKNOWN')
         from chat_search import from_responses,LABEL
@@ -137,7 +137,7 @@ def consume(cfg,value,native=None):
         if any(b.get('type') not in supported for b in blocks):raise ValueError('Unsupported Anthropic response block')
         calls=[{'id':b['id'],'name':b['name'],'args':b['input']} for b in blocks if b['type']=='tool_use']
         state={'role':'assistant','content':blocks}  # preserve signatures and redacted thinking verbatim
-        finish=value.get('stop_reason');ok=finish=='tool_use' if calls else finish=='end_turn'
+        finish=value.get('stop_reason');ok=finish=='tool_use' if calls else finish=='end_turn';cut=finish=='max_tokens'
         text=''.join(b['text'] for b in blocks if b['type']=='text');usage=value.get('usage',{})
         counts={'prompt_tokens':usage.get('input_tokens'),'completion_tokens':usage.get('output_tokens')};actual=value.get('model','UNKNOWN')
     else:
@@ -146,16 +146,18 @@ def consume(cfg,value,native=None):
         calls=[{'id':b['functionCall'].get('id'),'name':b['functionCall']['name'],'args':b['functionCall'].get('args',{})} for b in parts if 'functionCall' in b]
         text=''.join(b['text'] for b in parts if 'text' in b and not b.get('thought'))
         # All opaque parts/signatures are retained for the next turn, never included in final answer.
-        ok=choice.get('finishReason')=='STOP';usage=value.get('usageMetadata',{})
+        ok=choice.get('finishReason')=='STOP';cut=choice.get('finishReason')=='MAX_TOKENS';usage=value.get('usageMetadata',{})
         counts={'prompt_tokens':usage.get('promptTokenCount'),'completion_tokens':usage.get('candidatesTokenCount')};actual=value.get('modelVersion','UNKNOWN')
         from chat_search import from_google
         found,cited=from_google(choice)
-    if not ok:raise ValueError('Provider response incomplete or unsupported stop state')
+    # Output limit reached in the middle of an answer: keep what was written; the caller marks it as cut off.
+    truncated=bool(not ok and cut and not calls and (text or '').strip())
+    if not ok and not truncated:raise ValueError('Provider response incomplete or unsupported stop state')
     if not isinstance(actual,str) or len(actual)>200:raise ValueError('Invalid provider model identity')
     # Only numeric usage fields are auditable: no arbitrary provider strings/opaque states.
     def numeric(v):
         return {k:(numeric(x) if isinstance(x,dict) else x) for k,x in v.items() if isinstance(x,dict) or type(x) in (int,float)} if isinstance(v,dict) else {}
-    return dict(calls=calls,state=state,text=text,usage=numeric(usage),counts=counts,model=actual,search=found,citations=cited,search_usage=counted)
+    return dict(calls=calls,state=state,text=text,usage=numeric(usage),counts=counts,model=actual,search=found,citations=cited,search_usage=counted,truncated=truncated)
 
 def tool_results(cfg,messages,state,calls,results):
     p=protocol(cfg)

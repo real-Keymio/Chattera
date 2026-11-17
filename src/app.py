@@ -602,7 +602,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 metadata = {k: event[k] for k in ('visibility','independent_mode','independent_group','model_overrides','evidence','lens') if k in event}
                 if "targets" in event:
                     targets = event["targets"]
-                    if not isinstance(targets, list) or len(targets) > 20 or any(
+                    if not isinstance(targets, list) or len(targets) > 60 or any(
                         not isinstance(target, str) or not _re.fullmatch(r"[\w-]{1,64}", target)
                         for target in targets
                     ):
@@ -610,7 +610,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     metadata["targets"] = targets
                 if "action_instruction" in event:
                     instruction = event["action_instruction"]
-                    if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 1000:
+                    if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 4000:
                         continue
                     if reply_to is None or not metadata.get("targets"):
                         continue
@@ -619,7 +619,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # The human selects rendered text, which can differ from Markdown source.
                     # Treat it as a user-supplied excerpt tied to a validated same-channel reply.
                     quote = event["quote_text"]
-                    if reply_to is None or not isinstance(quote, str) or not quote.strip() or len(quote) > 1500:
+                    if reply_to is None or not isinstance(quote, str) or not quote.strip() or len(quote) > 8000:
                         continue
                     metadata["quote_text"] = quote
                 store.add(sender, text, attachments=attachments, reply_to=reply_to,
@@ -765,8 +765,8 @@ async def upload_image(file: UploadFile = File(...), display_name: str | None = 
         return JSONResponse({"error": f"unsupported file type: {ext or '(no extension)'}"}, status_code=400)
 
     policy = config.get("images", {}) if is_image else file_cfg
-    max_mb = policy.get("max_size_mb", 10 if is_image else 25)
-    max_bytes = min(int(max_mb * 1024 * 1024), 10 * 1024 * 1024) if chat_runtime else int(max_mb * 1024 * 1024)
+    max_mb = policy.get("max_size_mb", 10 if is_image else 50)
+    max_bytes = min(int(max_mb * 1024 * 1024), 50 * 1024 * 1024) if chat_runtime else int(max_mb * 1024 * 1024)
     # Keep storage URLs simple even for names with unusual suffixes (e.g. .c++).
     storage_ext = ext if not ext or _re.fullmatch(r"\.[a-z0-9_-]{1,32}", ext) else ".bin"
     filename = f"{uuid.uuid4().hex}{storage_ext}"

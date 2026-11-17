@@ -94,7 +94,7 @@ function problems() {
         if (!caps.documents) list.push(t('{0} 的连接（{1}）无法读取附件。请取消选择它或移除附件。', label(id), backend));
         else if (!caps.images && files.some(isImage)) list.push(t('{0} 的连接（{1}）不支持图片，它看不到图片。请取消选择它或移除图片。', label(id), backend));
     }
-    if (d.attachments.filter(isImage).length > 4) list.push(t('一条消息最多 4 张图片。'));
+    if (d.attachments.filter(isImage).length > 12) list.push(t('一条消息最多 12 张图片。'));
     return list;
 }
 
@@ -154,8 +154,8 @@ async function addFiles(files) {
     const d = draft(), channel = S.active, room = activeRoom();
     if (!room) return;
     for (const file of files) {
-        if (d.attachments.length + d.uploading >= 4) { d.error = t('每条消息最多 4 个附件。'); break; }
-        if (file.size > 10 * 1024 * 1024) { d.error = t('{0} 超过 10 MB 上限。', file.name); continue; }
+        if (d.attachments.length + d.uploading >= 12) { d.error = t('每条消息最多 12 个附件。'); break; }
+        if (file.size > 50 * 1024 * 1024) { d.error = t('{0} 超过 50 MB 上限。', file.name); continue; }
         if (/\.doc$/i.test(file.name)) { d.error = t('{0}：旧版 .doc 无法可靠解析，请在 Word 中另存为 DOCX 或 PDF 后再上传。', file.name); continue; }
         d.uploading++; sync();
         try {

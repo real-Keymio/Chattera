@@ -86,7 +86,7 @@ async function discussion(room, box) {
                 await roomApi(room, '/pins', { text: input.value.trim() }); await refreshRooms(); toast(t('已固定'));
             })));
         })(),
-        h('p', { class: 'hint' }, t('固定内容会作为房间背景带进之后每一次提问（公开与私聊都会），并保留来源。最多 12 条。'))));
+        h('p', { class: 'hint' }, t('固定内容会作为房间背景带进之后每一次提问（公开与私聊都会），并保留来源。最多 50 条。'))));
 
     box.append(section(t('这个聊天'),
         h('dl', { class: 'kv' }, h('dt', null, t('名称')), h('dd', null, room.name),

@@ -4,7 +4,7 @@ import { h, icon, ICONS, api, toast, modal, actionButton, fmtTime, fmtNum, store
 import { S, IDS, ALL, on, emit, label, color, sigil, tile, activeRoom, refreshRooms, loadModels, lensOf } from './state.js';
 import { renameRoom, archiveRoom, deleteRoom } from './sidebar.js';
 import { stopTask, friendlyReason, scrollToMessage } from './panes.js';
-import { roomModels } from './models.js';
+import { roomModels, connectionName } from './models.js';
 import { libraryTab } from './library.js';
 import { openMaterials } from './evidence.js';
 import { t } from './i18n.js';
@@ -160,13 +160,26 @@ async function summary(room, box) {
     const active = [...versions].reverse().find(v => ['confirmed', 'automatic'].includes(v.status));
     const latest = versions.at(-1);
     const job = memory.job || {};
+    // Two switches: one for all chats (off in a new install, since a subscription CLI writes the summaries and uses its quota),
+    // and a pause for this chat. The button always does something visible.
+    const writers = memory.writers || [];
+    const writer = h('select', { class: 'input small', 'aria-label': t('由谁来写摘要'), disabled: !writers.length,
+        onchange: async event => { try { await api('/api/chat/memory-settings', { backend: event.target.value }); render(); } catch (e) { toast(e.message, 'error'); } } },
+        (writers.length ? writers : [memory.backend]).map(name => h('option', { value: name, selected: name === memory.backend }, connectionName(name))));
+    const setGlobal = on => async () => { try { await api('/api/chat/memory-settings', { enabled: on }); toast(on ? t('已为所有聊天开启自动摘要') : t('已关闭所有聊天的自动摘要')); render(); } catch (e) { toast(e.message, 'error'); } };
+    const status = !memory.global_enabled ? t('所有聊天都关闭了')
+        : memory.room_paused ? t('这个聊天已暂停') : t('已开启');
     box.append(section(t('自动摘要'),
-        h('p', { class: 'modal-text' }, memory.enabled ? t('已开启') : t('已暂停'), job.state ? t(' · 最近一次：{0}', JOB[job.state] || job.state) : t(' · 尚未触发'),
+        h('p', { class: 'modal-text' }, status, job.state ? t(' · 最近一次：{0}', JOB[job.state] || job.state) : memory.enabled ? t(' · 讨论还不够长，尚未触发') : '',
             job.state === 'failed' && job.reason ? h('span', { class: 'err-text' }, t('（{0}）', job.reason)) : null),
-        h('p', { class: 'hint' }, t('公开讨论变长后，后台会自动整理较早的公开历史，聊天不会被阻塞；私聊内容不会进入摘要，原始消息始终保留。')),
+        h('p', { class: 'hint' }, t('公开讨论变长后（约 {0} 字以上的较早公开历史），后台会自动整理成摘要，聊天不会被阻塞；私聊内容不会进入摘要，原始消息始终保留。摘要由本机订阅 CLI 来写，会用它的额度，所以新安装时默认关闭。', Math.round((memory.threshold_bytes || 12000) / 3))),
         h('div', { class: 'card-actions' },
-            button(memory.enabled ? t('暂停自动摘要') : t('开启自动摘要'), async () => { await roomApi(room, '/memory', { enabled: !memory.enabled }); render(); }),
-            job.state === 'running' ? button(t('停止当前摘要任务'), async () => { await roomApi(room, '/memory', {}); render(); }) : null)));
+            !memory.global_enabled ? button(t('开启自动摘要（所有聊天）'), setGlobal(true))
+                : button(memory.room_paused ? t('恢复这个聊天的自动摘要') : t('暂停这个聊天的自动摘要'), async () => {
+                    await roomApi(room, '/memory', { enabled: memory.room_paused }); toast(memory.room_paused ? t('已恢复') : t('已暂停')); render(); }),
+            memory.global_enabled ? button(t('关闭所有聊天的自动摘要'), setGlobal(false)) : null,
+            job.state === 'running' ? button(t('停止当前摘要任务'), async () => { await roomApi(room, '/memory', {}); render(); }) : null),
+        h('label', { class: 'field' }, t('由谁来写摘要'), writer, writers.length ? null : h('span', { class: 'hint' }, t('没有可用的本机订阅 CLI：先在 设置 → 模型与服务 里启用 Claude Code 或 Codex。')))));
 
     const view = h('div');
     const show = version => {

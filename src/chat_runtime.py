@@ -452,6 +452,16 @@ def install(app_module, data_dir):
     install_setup(runtime, app_module, data_dir)
     from rolling_memory import RollingMemory
     runtime.memory=RollingMemory(runtime,cfg.get('automatic_memory'))
+    # Switched on/off in the interface (room settings → Summary); overrides the launch configuration, which ships it off
+    # because summaries are written by a subscription CLI and use its quota.
+    saved=runtime.registry.data.get('memory') or {}
+    if type(saved.get('enabled')) is bool:runtime.memory.cfg['enabled']=saved['enabled']
+    if isinstance(saved.get('backend'),str):runtime.memory.cfg['backend']=saved['backend']
+
+    def summary_writers():
+        """Connections that may write automatic summaries: subscription CLIs (paid API connections are not used for this)."""
+        from chat_backends import CLIBackend
+        return [n for n,b in runtime.tasks.backends.items() if isinstance(b,CLIBackend) and b.available()]
 
     @app_module.app.on_event('startup')
     async def start_memory():runtime.memory.start()
@@ -459,7 +469,26 @@ def install(app_module, data_dir):
     @app_module.app.get('/api/chat/rooms/{room_id}/memory')
     async def memory_state(room_id:str):
         channel=runtime.rooms.get(room_id)['channel']
-        return dict(enabled=runtime.memory.cfg['enabled'] and channel not in runtime.memory.disabled,job=runtime.memory.public(runtime.memory.jobs.get(channel,{})))
+        on=bool(runtime.memory.cfg['enabled'])
+        return dict(enabled=on and channel not in runtime.memory.disabled,global_enabled=on,room_paused=channel in runtime.memory.disabled,
+                    backend=runtime.memory.cfg['backend'],writers=summary_writers(),threshold_bytes=runtime.memory.cfg['threshold'],
+                    job=runtime.memory.public(runtime.memory.jobs.get(channel,{})))
+
+    @app_module.app.post('/api/chat/memory-settings')
+    async def memory_settings(request:Request):
+        body=await request.json()
+        with runtime.registry.lock:
+            value=runtime.registry.data.setdefault('memory',{})
+            if 'backend' in body:
+                if body['backend'] not in summary_writers():return JSONResponse({'error':_('这个连接不能用来写自动摘要（需要已开启的本机订阅 CLI）')},status_code=400)
+                value['backend']=runtime.memory.cfg['backend']=body['backend']
+            if type(body.get('enabled')) is bool:
+                if body['enabled'] and runtime.memory.cfg['backend'] not in summary_writers():
+                    return JSONResponse({'error':_('没有可用的本机订阅 CLI（Claude Code 或 Codex）来写摘要。先在 设置 → 模型与服务 里启用一个。')},status_code=400)
+                value['enabled']=runtime.memory.cfg['enabled']=body['enabled']
+                if not body['enabled']:runtime.memory.cancel()
+            runtime.registry.save()
+        return dict(enabled=runtime.memory.cfg['enabled'],backend=runtime.memory.cfg['backend'])
 
     @app_module.app.post('/api/chat/rooms/{room_id}/memory')
     async def memory_control(room_id:str,request:Request):

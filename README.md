@@ -25,10 +25,11 @@
 
 Chattera runs on your own computer. Add the models you want through their API — DeepSeek, OpenAI, Anthropic, Google
 Gemini, Qwen, Kimi, GLM, OpenRouter or any OpenAI-compatible endpoint — and talk to them together: ask everyone or one
-by name, let them respond to each other, compare independent answers, read side by side, and lay a discussion out on a
+by name, let them respond to each other, compare blind answers, read side by side, and lay a discussion out on a
 free canvas.
 
-It's a chat, not an agent platform: models answer; they don't run commands or edit your files.
+It's a chat, not an agent platform: models don't run commands or touch your files. For research they keep notes and
+downloaded papers in each chat's own chat folder, and nowhere else.
 
 > **Free.** Chattera is open source (MIT). With real models, the provider you choose bills you directly for API usage.
 > The demo calls no model and costs nothing.
@@ -60,7 +61,7 @@ Several models in one conversation. Ask everyone, or name one; let a model respo
 passage and follow up.
 </td>
 <td width="50%" valign="top">
-<b>Independent answers</b><br>
+<b>Blind answers</b><br>
 Everyone answers without seeing the others, and nothing is shared until you reveal it — for comparing views honestly.
 </td>
 </tr>
@@ -93,7 +94,20 @@ PDF, Word, HTML, text and images as attachments; text recognition (OCR) for scan
 </td>
 <td valign="top">
 <b>Local by design</b><br>
-Chats, settings, keys and the library stay in <code>%LOCALAPPDATA%\Chattera</code>. Chattera listens on 127.0.0.1 only.
+Chats, settings and keys stay in <code>%LOCALAPPDATA%\Chattera</code>. Chattera listens on 127.0.0.1 only. The library and
+caches can live in a folder you choose, such as a cloud drive.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Long research, like a web chat</b><br>
+No fixed number of searches: a model searches and reads until it has enough, then answers; you see how far it has got
+and can stop it any time. Each chat has a chat folder for notes, tables and downloaded open-access papers.
+</td>
+<td valign="top">
+<b>Branch and delete</b><br>
+Branch from any message into a fully independent copy (research library included); delete a chat for good, with its
+attachments, records and chat folder.
 </td>
 </tr>
 </table>
@@ -143,7 +157,7 @@ Chats, settings, keys and the library stay in <code>%LOCALAPPDATA%\Chattera</cod
 
 - The portable package is Windows 10/11 x64 only. macOS and Linux can run from source but are **untested**.
 - Local use only: there is no user authentication, so don't expose it to a network.
-- No account sync or mobile app. Chats can't be deleted yet (archive them instead); history is append-only by design.
+- No account sync or mobile app. History within a chat is append-only by design (a whole chat can be deleted).
 - No audio, video or image generation.
 - The full user guide is Chinese only for now; the English quick start covers the first chat.
 

@@ -1,48 +1,50 @@
 # Changelog
 
-## 0.1.3 — OpenAI Responses API
+## 0.2.0 — Ready for real research
 
-- **OpenAI Responses protocol.** Newer OpenAI reasoning models refuse function tools together with reasoning effort on
-  `/chat/completions`; connections to OpenAI can now use `/v1/responses` instead, with tool calls, reasoning effort and
-  image input. Requests are stateless (`store: false`); encrypted reasoning items are passed back unchanged between
-  tool rounds. The OpenAI preset uses it for new connections.
-- **OpenAI official web search** on Responses connections to `api.openai.com`, recorded like the other official
-  searches (queries, pages opened, citations). Switch it off per connection under *Official web search*.
-- A connection test that fails with OpenAI's "use /v1/responses" message offers the switch in one click.
-- **Delete chats.** A chat can now be deleted permanently from its menu or the room settings, and the archive can be
-  emptied in one step. Everything recorded only for that chat goes with it: messages and versions, attachments and their
-  parse cache, reply records, summaries, automatic memory, shared-retrieval bundles, canvas and research library. Cached
-  library files are removed only when no other chat uses them.
-- **Replies pace themselves, as in a web chat.** There is no fixed number of searches or reads: a model works until it
-  has enough, then answers. What bounds a reply is its time limit (Settings → Search & tools → *Longest time per reply*:
-  10 min to 2 h, or no limit; 30 min by default) and your stop button. Near the limit API models are asked to finish with
-  what they have; a model repeating the same call is answered from the first result and then asked to finish.
-  A running reply shows how many steps it has taken.
-- **Research agent** (on by default, Settings → Search & tools): Claude Code and Codex use their own web search for
-  messages everyone can see, and every chat has a **chat folder** where participants keep notes, tables and downloaded
-  open-access papers (`workspace_list / read / write / download`). Files a reply saved are listed under it and open in
-  a new tab; Room settings → *Open chat folder*. The folder lives in the library folder (so it syncs when the library is in
-  a cloud folder) and is deleted with the chat. Models cannot run commands or reach anything outside the folder.
-- **Clearer words in the message box.** *Analysis framework* (was “lens”), *Everyone can see / Only X can see* (was
-  “public”), *Answers visible / Blind answers* (was “discussion / independent”), each with a short explanation.
-- **Room to work.** Limits sized for long research rather than quick chats:
-  - tool calls per reply: 60 search/read calls (was 8) and 80 library calls; up to 20 request rounds on tool-enabled API connections;
-  - one read returns 20,000 characters of a page or paper (was 5,200); searches return up to 20 results with abstracts up to 3,000 characters;
-  - output limit 32,000 tokens by default, up to 128,000; API timeout 900 s by default, up to 3,600 s;
-  - older long messages are shown in full up to 32 KB before being excerpted (scaled to the model's budget);
-  - attachments: 12 per message, 50 MB each; OCR up to 300 pages;
-  - automatic memory up to 40,000 bytes; 50 pins of up to 8,000 characters; longer library notes and quotes.
-- **Nothing is thrown away for hitting a limit.** When the tool budget or the request rounds run out, the model gets one last request
-  with tool calls switched off and answers from what it found. An answer that reaches the output limit is kept, with a note that it
-  was cut off.
-- **Caches live with the library.** Parsed attachments, rendered PDF pages and downloaded web pages and PDFs are kept in
-  `<library folder>\cache`, so a library in a cloud-synced folder (e.g. Google Drive) takes them along; they fall back to the local
-  data folder while that folder is unreachable. The library cache budget defaults to 20 GiB.
-- **Branches are independent copies**: a branch now also gets its own copy of the research library, so deleting either
-  chat never affects the other.
-- **Fix:** replies from a participant whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own
-  messages; on a slow start, other added participants could look the same until the next change.
-- **Fix:** menus opened inside Settings (the ⋯ menu on each model) were shown but could not be clicked.
+The first version meant for everyday use: all three API families work out of the box, replies take the time a
+research question needs, and nothing a model found is lost because it hit a limit.
+
+**Connections that work**
+- **OpenAI Responses API.** Newer OpenAI reasoning models refuse function tools together with reasoning effort on
+  `/chat/completions`; OpenAI connections now use `/v1/responses` (tool calls, reasoning effort, images; stateless,
+  `store: false`). The OpenAI preset uses it, and a connection test that fails with OpenAI's “use /v1/responses”
+  message offers the switch in one click. OpenAI's own web search is available on these connections.
+- Anthropic keys that are not scoped to a workspace, and slow relays, are handled (workspace ID in *Compatibility*,
+  longer timeouts).
+
+**Replies that take the time they need**
+- **Self-paced, as in a web chat.** No fixed number of searches or reads: a model works until it has enough, then
+  answers. A reply is bounded by its time limit (Settings → Search & tools → *Longest time per reply*: 10 min to 2 h,
+  or no limit; 30 min by default) and by your stop button. A running reply shows what it is doing and how many steps
+  it has taken.
+- **Nothing is thrown away for hitting a limit.** Near the time limit, or if a model keeps repeating the same call, it
+  is asked to answer from what it has. An answer that reaches the output limit is kept, marked as cut off.
+- **Research agent** (on by default): every chat has a **chat folder** where participants keep notes, tables and
+  downloaded open-access papers; files a reply saved are listed under it and open in a new tab (Room settings →
+  *Open chat folder*). Models cannot run commands or reach anything outside that folder. Locally installed official
+  CLIs, if you enabled them, may use their own web search for messages everyone can see.
+- **Room to work**: one read returns 20,000 characters; searches return up to 20 results; output limit 32,000 tokens by
+  default (up to 128,000); 12 attachments per message, 50 MB each; OCR up to 300 pages; longer history excerpts,
+  automatic memory, pins and library notes.
+
+**Your data**
+- **Delete chats** permanently from the chat menu or the room settings, or empty the archive in one step. Everything
+  recorded only for that chat goes with it (messages and versions, attachments, reply records, summaries, canvas,
+  research library, chat folder); shared cached files go only when no other chat uses them.
+- **Branches are independent copies**, research library included: deleting either chat never affects the other.
+- **Caches live with the library**: parsed attachments, rendered PDF pages and downloaded pages and PDFs are kept in
+  `<library folder>\cache`, so a library in a cloud-synced folder takes them along (local fallback while it is
+  unreachable).
+- **Automatic summaries** can be switched on from the room panel (Room settings → Summary): for all chats, paused per
+  chat, with a choice of which installed CLI writes them. They stay off in a new install.
+
+**Clearer interface**
+- Message box: *Analysis framework* (was “lens”), *Everyone can see / Only X can see* (was “public”), *Answers visible /
+  Blind answers* (was “discussion / independent”), each with a short explanation.
+- **Fixes:** replies from participants whose id ends in a number (e.g. `claude-fable-5-2`) were drawn as your own
+  messages; menus inside Settings (the ⋯ menu on each model) could not be clicked; the automatic-summary button did
+  nothing in a new install.
 
 ## 0.1.2 — Easier model settings, clearer errors
 

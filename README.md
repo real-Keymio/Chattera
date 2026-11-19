@@ -28,6 +28,9 @@ Gemini, Qwen, Kimi, GLM, OpenRouter or any OpenAI-compatible endpoint — and ta
 by name, let them respond to each other, compare blind answers, read side by side, and lay a discussion out on a
 free canvas.
 
+It is meant to feel like the web chat apps you already use — only with several models in the conversation — and is
+built for discussing and researching scientific questions.
+
 It's a chat, not an agent platform: models don't run commands or touch your files. For research they keep notes and
 downloaded papers in each chat's own chat folder, and nowhere else.
 

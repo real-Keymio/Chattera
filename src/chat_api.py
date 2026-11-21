@@ -23,7 +23,7 @@ class APIBackend:
             raise ValueError('Use a separate named API profile, not a reserved backend identity')
         allowed = {'type','identity','enabled','base_url','model','key_env','mock','timeout',
                    'max_output_tokens','output_limit_field','reasoning_parameter','reasoning_value',
-                   'tools','images','max_requests','max_requests_per_task','protocol','provider','key_file','anthropic_version','anthropic_auth','anthropic_workspace','effort','thinking','model_capabilities','context','model_contexts','native_search','google_auth'}
+                   'tools','images','max_requests','max_requests_per_task','protocol','provider','key_file','anthropic_version','anthropic_auth','anthropic_workspace','anthropic_cache','effort','thinking','model_capabilities','context','model_contexts','native_search','google_auth'}
         if set(cfg) - allowed:
             raise ValueError('Unknown API configuration field; keys must use key_env or key_file')
         url = urlsplit(cfg.get('base_url', ''))
@@ -37,9 +37,10 @@ class APIBackend:
         selected_protocol=wire.protocol(cfg)
         if selected_protocol!='openai-chat' and set(cfg)&{'reasoning_parameter','reasoning_value','output_limit_field'}:
             raise ValueError('OpenAI-specific mappings cannot be used with another protocol')
-        if selected_protocol!='anthropic-messages' and set(cfg)&{'anthropic_version','anthropic_auth','anthropic_workspace'}:
+        if selected_protocol!='anthropic-messages' and set(cfg)&{'anthropic_version','anthropic_auth','anthropic_workspace','anthropic_cache'}:
             raise ValueError('Anthropic-specific headers cannot be used with another protocol')
         if cfg.get('anthropic_auth','api-key') not in ('api-key','bearer'):raise ValueError('Unsupported Anthropic authentication header')
+        if cfg.get('anthropic_cache') not in (None,'1h','off'):raise ValueError('Prompt cache lifetime: default, 1h or off')
         for key in ('anthropic_version','anthropic_workspace'):
             if key in cfg and (not isinstance(cfg[key],str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',cfg[key])):raise ValueError('Invalid Anthropic header configuration')
         if cfg.get('key_file') and cfg.get('key_env'): raise ValueError('Choose one API key source')
@@ -100,6 +101,7 @@ class APIBackend:
     async def run_async(self,prompt,task,cancel,attach=None):
         from chat_tools import FrozenTools, tool_schemas
         cfg=task.get('_effective_config',self.config)
+        if getattr(self,'cache_unsupported',False):cfg=dict(cfg,anthropic_cache='off')  # this endpoint refused the cache fields once
         snapshot=json.loads((Path(task['directory'])/'snapshot.json').read_text('utf-8'))
         executor=FrozenTools(snapshot,Path(task['directory'])/'tool-events.jsonl')
         from chat_attachments import image_blocks
@@ -119,7 +121,7 @@ class APIBackend:
             trace.append(dict(kind='error',at=time.time(),via='official search',error='The provider refused its official search earlier ('+self.search_refused_why+'). Chattera search was used instead.'))
             native[0]=None;planned[0]=not cfg.get('tools')
         async def work():
-            nonlocal usage_known,messages
+            nonlocal usage_known,messages,cfg
             headers=wire.headers(cfg,get_key(cfg))
             async with httpx.AsyncClient(timeout=cfg['timeout'],follow_redirects=False,trust_env=False) as client:
                 async def own_search():
@@ -170,6 +172,11 @@ class APIBackend:
                                 async for block in response.aiter_bytes():
                                     error.extend(block[:max(0,16384-len(error))])
                                     if len(error)>=16384:break
+                            if response.status_code==400 and wire.cache_marker(cfg) and wire.cache_rejected(error):
+                                # A relay that speaks the Messages protocol but not prompt caching: send the same request without
+                                # the cache fields and remember it for this connection, so it does not fail again.
+                                self.cache_unsupported=True;cfg=dict(cfg,anthropic_cache='off')
+                                continue
                             if response.status_code==429 and not retried['limit']:
                                 retried['limit']=True;await asyncio.sleep(4)  # relays rate-limit in bursts: one unhurried second try
                                 continue
@@ -226,7 +233,9 @@ class APIBackend:
                     if parsed.get('truncated'):
                         from chattera_i18n import _
                         parsed['text']=parsed['text'].rstrip()+'\n\n'+_('（回答写到这里达到了单次输出上限，后面的内容被截断。可以在连接设置里调高“单次输出上限”，或让它接着写。）')
+                    import chat_cache
                     return redact(dict(text=parsed['text'],model=parsed['model'],requested_model=cfg['model'],truncated=bool(parsed.get('truncated')),
+                                cache=chat_cache.summarize(wire.protocol(cfg),response_usages),
                                 requested_effort=cfg.get('effort',cfg.get('reasoning_value','UNKNOWN')),
                                 usage=totals if usage_known else 'UNKNOWN',last_response_usage=usage,response_usages=response_usages,
                                 usage_fields=dict(input_tokens=totals['prompt_tokens'] if usage_known else 'UNKNOWN',
@@ -263,6 +272,7 @@ class APIBackend:
         """One plain request outside any room: connection tests, query planning, calibration. Counts in the usage ledger."""
         if not self.available(): raise ValueError('API backend disabled or key unavailable')
         cfg=dict(self.config)
+        if getattr(self,'cache_unsupported',False):cfg['anthropic_cache']='off'
         if model and model!=cfg.get('model'):
             cfg['model']=model
             for key in ('effort','thinking'):cfg.pop(key,None)
@@ -271,6 +281,9 @@ class APIBackend:
         try:
             with httpx.Client(timeout=timeout,follow_redirects=False,trust_env=False) as client:
                 response=client.post(wire.endpoint(cfg),headers=wire.headers(cfg,get_key(cfg)),json=wire.body(cfg,wire.initial(cfg,prompt,[]),[]))
+                if response.status_code==400 and wire.cache_marker(cfg) and wire.cache_rejected(response.content[:16384]):
+                    self.cache_unsupported=True;cfg['anthropic_cache']='off'
+                    response=client.post(wire.endpoint(cfg),headers=wire.headers(cfg,get_key(cfg)),json=wire.body(cfg,wire.initial(cfg,prompt,[]),[]))
                 if response.status_code!=200:
                     raise RuntimeError('API HTTP status '+str(response.status_code)+wire.error_hint(response.content[:16384] if response.status_code in (400,422) else b''))
                 parsed=wire.consume(cfg,response.json())

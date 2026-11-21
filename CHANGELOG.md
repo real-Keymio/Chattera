@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 — Prompt caching for Anthropic
+
+- **Anthropic connections now use prompt caching.** Each request marks the parts that do not change — the system
+  prompt and the chat context — so the repeated requests of one reply (every tool call resends the context) are read
+  from Anthropic's cache instead of at full price. Other providers cache on their own and are unchanged. Relays that
+  speak the Anthropic protocol without caching are detected on the first refusal and used without it from then on.
+- **Cache lifetime option** (connection → Compatibility): default (about 5 minutes) or longer (about 1 hour), or off.
+  The longer lifetime costs more to write and pays off only when you keep coming back to the same chat within an hour.
+- **See the hit rate**: a reply's details show its input tokens, how many came from the cache and how many were
+  written to it; each connection in Settings → Models & services shows its average over recent replies. Providers
+  that report no cache information show “unknown”, never 0 %; for subscription CLIs the figure is for reference only.
+
 ## 0.2.0 — Ready for real research
 
 The first version meant for everyday use: all three API families work out of the box, replies take the time a

@@ -35,7 +35,7 @@ LABELS = dict(BUILTIN_LABELS)
 COLORS = dict(BUILTIN_COLORS)
 PROFILE_FIELDS = {'identity', 'protocol', 'base_url', 'model', 'enabled', 'timeout', 'max_output_tokens', 'max_requests',
                   'max_requests_per_task', 'tools', 'images', 'effort', 'thinking', 'reasoning_parameter', 'output_limit_field',
-                  'provider', 'anthropic_version', 'anthropic_auth', 'anthropic_workspace', 'native_search', 'google_auth'}
+                  'provider', 'anthropic_version', 'anthropic_auth', 'anthropic_workspace', 'anthropic_cache', 'native_search', 'google_auth'}
 
 LENSES = {
  'open': dict(name=N_('开放科学讨论'), builtin=True, summary=N_('默认。自然交流，质疑前提，保留分歧，不把讨论变成交付任务。'), method=''),
@@ -265,7 +265,7 @@ class Registry:
                         tools=bool(cfg.get('tools')), images=bool(cfg.get('images')), thinking=cfg.get('thinking'),
                         max_output_tokens=cfg.get('max_output_tokens'), max_requests=cfg.get('max_requests'),
                         max_requests_per_task=cfg.get('max_requests_per_task'), reasoning_parameter=cfg.get('reasoning_parameter'),
-                        output_limit_field=cfg.get('output_limit_field', 'max_tokens'), anthropic_workspace=cfg.get('anthropic_workspace'),
+                        output_limit_field=cfg.get('output_limit_field', 'max_tokens'), anthropic_workspace=cfg.get('anthropic_workspace'), anthropic_cache=cfg.get('anthropic_cache'),
                         provider=cfg.get('provider', ''), usage=dict(getattr(runner, 'usage', {})) if runner else None,
                         available=bool(runner and runner.available()))
         else:
@@ -331,6 +331,9 @@ def install(runtime, app_module, cfg, config_path):
         effective = registry.backends()
         verification = tasks.verification()
         profiles = [registry.profile_view(name, c, tasks.backends.get(name)) for name, c in effective.items()]
+        import chat_cache
+        history = list(tasks.tasks.values())
+        for row in profiles: row['cache_recent'] = chat_cache.recent(history, row['name'])
         catalog = {}
         for name, models in registry.data['catalog'].items():
             if name not in effective: continue

@@ -185,6 +185,8 @@ class CLIBackend:
                 said = "; CLI said: " + " ".join(str(redact(said)).split())[:200] if said else ""
                 raise RuntimeError(f"{self.name} CLI exit {proc.returncode}; no reply committed{said}")
             result = self.parse(b"".join(chunks).decode("utf-8", "replace"))
+            import chat_cache   # informational for subscriptions: shows caching, not quota
+            result['cache'] = chat_cache.summarize(self.name + '-cli', [result.get('usage')], subscription=True)
             if native: result['search_trace'] = trace.entries
             return result
         finally:

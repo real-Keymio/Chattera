@@ -75,6 +75,35 @@ def final_note(cfg,messages,text):
     elif p=='google-generate-content' and messages and messages[-1].get('role')=='user':messages[-1]['parts'].append({'text':text})
     else:messages.append({'role':'user','content':[{'type':'text','text':text}]} if p=='anthropic-messages' else {'role':'user','parts':[{'text':text}]})
 
+# Anthropic prompt caching (https://platform.claude.com/docs/en/build-with-claude/prompt-caching): Anthropic caches only
+# what a request marks with cache_control. Up to 4 breakpoints; {"type":"ephemeral"} lasts about 5 minutes, "ttl":"1h"
+# about an hour. Breakpoints here: the system prompt, the end of Chattera's context (the first user message, unchanged for
+# the whole reply) and the last block of the request (the growing tool loop, read back by the next request). Prompts below
+# the model's minimum simply are not cached. Markers go on copies: the stored conversation never collects them.
+def cache_marker(cfg):
+    if protocol(cfg)!='anthropic-messages' or cfg.get('anthropic_cache')=='off':return None
+    return {'type':'ephemeral','ttl':'1h'} if cfg.get('anthropic_cache')=='1h' else {'type':'ephemeral'}
+
+def _markable(block):
+    return isinstance(block,dict) and block.get('type') not in ('thinking','redacted_thinking') and not (block.get('type')=='text' and not block.get('text'))
+
+def with_cache_points(messages,marker):
+    out=list(messages)
+    for index in dict.fromkeys(i for i in (0,len(out)-1) if 0<=i<len(out)):
+        message=out[index];content=message.get('content')
+        if isinstance(content,str):content=[{'type':'text','text':content}] if content else []
+        if not isinstance(content,list):continue
+        spot=next((i for i in range(len(content)-1,-1,-1) if _markable(content[i])),None)
+        if spot is None:continue
+        content=list(content);content[spot]=dict(content[spot],cache_control=marker)
+        out[index]=dict(message,content=content)
+    return out
+
+def cache_rejected(raw):
+    """A 400 caused by the cache fields themselves (relays that speak the Messages protocol without caching)."""
+    text=raw.decode('utf-8','replace') if isinstance(raw,(bytes,bytearray)) else str(raw or '')
+    return bool(re.search(r'cache_control|\bttl\b|ephemeral',text,re.IGNORECASE))
+
 def _body(cfg,messages,schemas,native=None):
     p=protocol(cfg);effort=cfg.get('effort',cfg.get('reasoning_value'));thinking=cfg.get('thinking')
     if p=='openai-chat':
@@ -96,6 +125,8 @@ def _body(cfg,messages,schemas,native=None):
         return result
     if p=='anthropic-messages':
         result={'model':cfg['model'],'system':SYSTEM,'messages':messages,'max_tokens':cfg['max_output_tokens']}
+        cache=cache_marker(cfg)
+        if cache:result.update(system=[{'type':'text','text':SYSTEM,'cache_control':cache}],messages=with_cache_points(messages,cache))
         if thinking:result['thinking']=thinking
         if effort is not None:result['output_config']={'effort':effort}
         if schemas:result['tools']=[{'name':s['function']['name'],'description':s['function']['description'],'input_schema':s['function']['parameters']} for s in schemas]

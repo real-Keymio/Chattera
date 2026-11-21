@@ -149,6 +149,16 @@ async function context(room, box) {
         }, 'primary'))), table);
 }
 
+/** Input tokens of a reply, how many were read from the prompt cache, and how many were written to it. */
+function cacheText(c) {
+    if (!c) return t('未知');
+    if (c.rate == null) return t('未知（服务商没有返回缓存信息）');
+    return t('输入 {0} Token · 命中缓存 {1}（{2}%）', fmtNum(c.input_tokens), fmtNum(c.cached_tokens), c.rate)
+        + (c.written_tokens != null ? t(' · 写入缓存 {0}', fmtNum(c.written_tokens)) : '')
+        + (c.requests > 1 ? t(' · 共 {0} 次请求', c.requests) : '')
+        + (c.subscription ? t('（仅供参考，不代表订阅额度的节省）') : '');
+}
+
 // ---------- summary / rolling memory ----------
 const SECTIONS = { question: t('讨论背景与当前问题'), positions: t('各模型立场'), verified: t('有来源的主张（自动摘要不代表已核实）'),
     unverified: t('未核查的主张'), disagreements: t('未解决的分歧'), changes: t('立场变化') };
@@ -236,6 +246,7 @@ async function calls(room, box) {
             [t('模型之间'), { normal: t('背靠背回答'), strict: t('严格背靠背') }[task.independent_mode] || t('回答互相可见')], [t('连接'), task.backend], [t('分析框架'), task.research_lens?.name || t('开放科学讨论')],
             [t('请求模型 / effort'), `${u(task.requested_model)} / ${u(task.requested_effort)}`], [t('服务端实际模型'), u(task.actual_model)],
             [t('输入估算 / 容量'), `${fmtNum(task.input_estimate)} / ${fmtNum(task.budget)} ${task.budget_unit || 'bytes'}`],
+            [t('提示词缓存'), cacheText(task.cache)],
             [t('文字 UTF-8 字节'), fmtNum(task.input_bytes)], [t('摘要版本'), u(task.summary_version)],
             [t('快照截止消息'), u(task.snapshot_cutoff)], [t('送入初始输入的消息'), range(task.included_message_ranges ?? task.message_ids)],
             [t('额外引用'), range(task.reference_ids)], [t('因容量被裁剪'), range(task.trimmed_history_ranges)], [t('由摘要覆盖'), range(task.summarized_history_ranges)],

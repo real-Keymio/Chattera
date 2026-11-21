@@ -125,6 +125,13 @@ async function runTest(name, model) {
         : { ok: false, text: t('调用失败：') + friendlyReason(value.test.reason || ''), reason: value.test.reason || '' };
 }
 
+/** Average prompt-cache hit rate over the connection's latest replies that reported it. */
+function cacheRecent(profile) {
+    const c = profile.cache_recent;
+    return [h('dt', null, t('提示词缓存命中率')), h('dd', null, !c ? t('未知（最近的回答没有返回缓存信息）')
+        : t('最近 {0} 条回答平均 {1}%', c.replies, c.rate ?? '—') + (c.subscription ? t('（仅供参考，不代表订阅额度的节省）') : ''))];
+}
+
 /** A failed test whose cause a setting on this page fixes: say which one, and offer to change it. */
 function fixFor(profile, reason, retest) {
     if (!reason || profile.kind !== 'api') return null;
@@ -521,6 +528,7 @@ function connectionDetail(profile, rerender) {
             protocol: select(Object.entries(PROTOCOL), profile.protocol, { onchange: () => { dirty(); showCompat(); } }),
             output_limit_field: select([['max_tokens', t('max_tokens（大多数服务）')], ['max_completion_tokens', t('max_completion_tokens（OpenAI 较新的模型）')]], profile.output_limit_field || 'max_tokens', { onchange: dirty }),
             anthropic_workspace: h('input', { class: 'input', value: profile.anthropic_workspace || '', placeholder: 'wrkspc_…', maxLength: 100, dataset: { field: 'anthropic_workspace' }, oninput: dirty }),
+            anthropic_cache: select([['', t('默认（约 5 分钟）')], ['1h', t('较长（约 1 小时）')], ['off', t('不使用缓存')]], profile.anthropic_cache || '', { onchange: dirty }),
             max_output_tokens: h('input', { class: 'input', type: 'number', min: 256, max: 128000, value: profile.max_output_tokens ?? 32000, oninput: dirty }),
             timeout: h('input', { class: 'input', type: 'number', min: 10, max: 3600, value: profile.timeout ?? 900, oninput: dirty }),
             max_requests: h('input', { class: 'input', type: 'number', min: 1, placeholder: t('不限'), value: profile.max_requests ?? '', oninput: dirty }),
@@ -532,7 +540,8 @@ function connectionDetail(profile, rerender) {
         const compat = {
             'openai-chat': h('div', null, field(t('输出上限的参数名'), f.output_limit_field, t('测试时报 max_tokens 不被接受，就改成 max_completion_tokens。')), f.effortRow),
             'openai-responses': h('p', { class: 'hint' }, t('Responses 接口自带推理强度和输出上限参数，这里没有需要调整的。')),
-            'anthropic-messages': field(t('工作区 ID（anthropic-workspace-id）'), f.anthropic_workspace, t('只有当 Key 没有绑定到某个工作区、Anthropic 要求带上工作区 ID 时才需要填写。ID 在 Anthropic Console 的工作区设置里，以 wrkspc_ 开头。')),
+            'anthropic-messages': h('div', null, field(t('工作区 ID（anthropic-workspace-id）'), f.anthropic_workspace, t('只有当 Key 没有绑定到某个工作区、Anthropic 要求带上工作区 ID 时才需要填写。ID 在 Anthropic Console 的工作区设置里，以 wrkspc_ 开头。')),
+                field(t('提示词缓存有效期'), f.anthropic_cache, t('Chattera 会让 Anthropic 缓存每次请求里不变的部分（系统提示和聊天上下文），同一条回答里反复调用工具时就不用全价重读。较长的有效期写入缓存的费用更高，只有在一小时内反复回到同一个聊天时才划算；隔几天再回来的对话靠自动摘要节省，延长有效期没有用。具体时长和价格以 Anthropic 官方文档为准。中转站不支持缓存时会自动关闭。'))),
             'google-generate-content': h('label', { class: 'radio' }, f.google_auth, t('用 Bearer 方式发送密钥'), h('small', null, t('仅 Google 原生协议经中转站访问时需要'))),
         };
         const compatBox = h('div', { class: 'compat' });
@@ -545,7 +554,8 @@ function connectionDetail(profile, rerender) {
                 field(t('单次输出上限（Token）'), f.max_output_tokens, t('太小会让长回答被截断。')), field(t('超时（秒）'), f.timeout), field(t('累计请求上限'), f.max_requests, t('留空为不限。')),
                 field(t('官方联网搜索'), f.native_search, t('当前生效：{0}。服务商拒绝时会自动改用 Chattera 检索并记录原因。', SEARCH_KIND[profile.search_kind] || t('没有官方搜索，独立检索时使用 Chattera 检索')))),
             h('dl', { class: 'kv' }, h('dt', null, t('连接 ID')), h('dd', null, h('code', null, profile.name)), h('dt', null, t('密钥位置')), h('dd', null, profile.key_source || '—'),
-                u ? [h('dt', null, t('本机累计')), h('dd', null, t('请求 {0} 次 · 输入 {1} / 输出 {2} Token（服务商返回值；金额无法从这里得知）', fmtNum(u.requests), fmtNum(u.prompt_tokens), fmtNum(u.completion_tokens)))] : null));
+                u ? [h('dt', null, t('本机累计')), h('dd', null, t('请求 {0} 次 · 输入 {1} / 输出 {2} Token（服务商返回值；金额无法从这里得知）', fmtNum(u.requests), fmtNum(u.prompt_tokens), fmtNum(u.completion_tokens)))] : null,
+                cacheRecent(profile)));
     } else {
         f.timeout = h('input', { class: 'input', type: 'number', min: 10, max: 3600, value: profile.timeout ?? 120, oninput: dirty });
         f.native_search = select([['', t('使用（独立检索时）')], ['off', t('不使用（改用 Chattera 检索）')]], profile.native_search === 'off' ? 'off' : '', { onchange: dirty });
@@ -553,7 +563,7 @@ function connectionDetail(profile, rerender) {
             h('p', { class: 'hint' }, t('通过本机已登录的官方命令行调用，不使用 API Key，也不读取它的登录凭据。{0}', profile.version ? t('当前版本：') + profile.version + t('。') : '')),
             h('div', { class: 'card-actions' }, test), result));
         adv.append(h('div', { class: 'form-grid two' }, field(t('超时（秒）'), f.timeout, t('联网搜索的回答需要更长时间。')), field(t('CLI 自带的联网搜索'), f.native_search, name === undefined ? '' : t('{0}，走订阅额度，不使用 API Key。', profile.name === 'claude' ? 'WebSearch / WebFetch' : 'web_search'))),
-            h('dl', { class: 'kv' }, h('dt', null, t('程序')), h('dd', null, h('code', null, profile.executable || '—')), h('dt', null, t('默认模型')), h('dd', null, modelName(profile.name, profile.model) + (profile.effort ? ' · ' + effortName(profile.effort) : ''))));
+            h('dl', { class: 'kv' }, cacheRecent(profile), h('dt', null, t('程序')), h('dd', null, h('code', null, profile.executable || '—')), h('dt', null, t('默认模型')), h('dd', null, modelName(profile.name, profile.model) + (profile.effort ? ' · ' + effortName(profile.effort) : ''))));
     }
     const models = h('section', { class: 'mm-sec' },
         h('div', { class: 'sec-head' }, h('h4', null, t('模型 · {0}', catalogOf(profile.name).length)), h('span', { class: 'grow' }),
@@ -571,7 +581,8 @@ function connectionDetail(profile, rerender) {
                     max_requests: f.max_requests.value.trim() ? Number(f.max_requests.value) : null, reasoning_parameter: f.protocol.value === 'openai-chat' && f.effort_param.checked ? 'reasoning_effort' : null,
                     native_search: f.native_search.value || null, google_auth: f.protocol.value === 'google-generate-content' && f.google_auth.checked ? 'bearer' : null,
                     output_limit_field: f.protocol.value === 'openai-chat' && f.output_limit_field.value === 'max_completion_tokens' ? 'max_completion_tokens' : null,
-                    anthropic_workspace: f.protocol.value === 'anthropic-messages' ? f.anthropic_workspace.value.trim() || null : null };
+                    anthropic_workspace: f.protocol.value === 'anthropic-messages' ? f.anthropic_workspace.value.trim() || null : null,
+                    anthropic_cache: f.protocol.value === 'anthropic-messages' ? f.anthropic_cache.value || null : null };
                 await act('/api/chat/profiles', { name: profile.name, label: name.value.trim(), settings });
             } else await act('/api/chat/cli/' + profile.name, { label: name.value.trim(), timeout: Number(f.timeout.value), native_search: f.native_search.value || null });
             toast(t('已保存，立即生效')); rerender();

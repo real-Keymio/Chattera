@@ -89,11 +89,17 @@ class ClaudeCode(CLIAdapter):
                 '--allowedTools', ','.join(['mcp__room__' + t for t in self.room_tools] + (['WebSearch', 'WebFetch'] if search else []))]
 
     def prepare_input(self, cfg, command, prompt, payload, snapshot):
-        if not any(item.get('kind') == 'image' for item in payload.get('attachment_evidence', [])):
+        from context_budget import prompt_parts
+        parts = prompt_parts(prompt, snapshot)
+        if not parts and not any(item.get('kind') == 'image' for item in payload.get('attachment_evidence', [])):
             return command, prompt.encode('utf-8')
-        # --input-format stream-json accepts one user message whose content holds the text prompt plus base64 image blocks.
+        # --input-format stream-json accepts one user message whose content holds text blocks plus base64 image blocks.
+        # The fixed part of the input (unchanged since this participant's last turn) is its own block with a cache marker,
+        # so the next turn reads it from Anthropic's cache. Claude Code marks its own blocks with a one-hour lifetime when
+        # signed in with a subscription, and a later marker may not have a longer lifetime than an earlier one.
         from chat_attachments import image_blocks
-        content = [{'type': 'text', 'text': prompt}]
+        content = ([{'type': 'text', 'text': parts[0], 'cache_control': {'type': 'ephemeral', 'ttl': '1h'}}, {'type': 'text', 'text': parts[1]}]
+                   if parts else [{'type': 'text', 'text': prompt}])
         for block in image_blocks(snapshot, payload):
             header, data = block['image_url']['url'].split(',', 1)
             content.append({'type': 'image', 'source': {'type': 'base64', 'media_type': header[5:].split(';')[0], 'data': data}})

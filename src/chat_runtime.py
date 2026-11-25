@@ -32,6 +32,7 @@ class ChatRuntime:
         from chat_attachments import Attachments
         self.attachments = Attachments(app_module.store, app_module.config.get('images', {}).get('upload_dir', str(Path(data_dir)/'uploads')), data_dir, cfg.get('parser_dependencies',''),cfg.get('image_policy'))
         self.builder.attachments = self.attachments
+        self.builder.summary_pins_path = Path(data_dir) / 'summary_pins.json'
         from chat_evidence import Evidence
         self.evidence = Evidence(data_dir, self.attachments)
         self.data_dir = Path(data_dir)

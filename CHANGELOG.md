@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.2.5 — Whole history, cached between turns, copy and export
+
+- **Subscription CLIs get the whole history again.** Claude Code and Codex were given room for only about 31,000
+  “tokens” of history: the budget reserved space for tool results these CLIs manage themselves, reserved the maximum
+  output, and counted every byte as a token (a Chinese character as three). In a research chat that meant the first
+  round was already left out by the second (“part of the history was not included”). Now CLIs keep no tool reserve,
+  the output reserve follows the connection's output limit, and tokens are estimated per character (Chinese about one,
+  English about four characters a token) with 15 % of the room kept free. With the 256K setting a CLI now gets about
+  256,000 tokens of history. One very long message still takes at most a quarter of the room.
+- **The input stays the same from turn to turn, so the provider's cache works across turns.** Each participant keeps
+  the summary it read last time while the newer messages still fit, and the part of its input that did not change
+  since its last turn is sent as a separate block marked for caching (Claude Code and Anthropic connections); new
+  messages and the question follow in a second block. Subscription CLIs run in one fixed, empty working folder per
+  chat and participant, because the folder is part of their own system prompt. OpenAI connections send a hashed
+  `prompt_cache_key` per chat and participant. Measured: the second and third turns of a chat read 93–96 % of their
+  input from the cache (Claude Code and the Anthropic API). Codex picks its own cache routing; its hit rate varies.
+- **If a model still refuses the input as too long**, the reply is retried once with less history (60 % of the room).
+- **Copy a round with who said what**: “Copy round” (on the round, or in a message's ⋯ menu) gives
+  `User:` / `<participant>:` before each message, ready to paste anywhere.
+- **Select several messages** (⋯ → *Select several…*): click messages, or a question to take its answers with it;
+  then copy them together or **export them as a Markdown file** with the chat's name, the export time and the
+  participants.
+- The scholarly search tools the CLIs see now describe what they really search (OpenAlex, Europe PMC, Crossref,
+  arXiv, with abstracts); they said “Crossref metadata only”.
+
+**中文说明**
+- **订阅版 CLI 重新带上完整历史。** 之前 Claude Code 和 Codex 的历史预算只有约 3.1 万：给 CLI 自己管理的工具结果预留了空间、按最大值预留输出，而且一个字节算一个 Token（一个汉字算三个），研究对话到第二轮就丢了第一轮。现在 CLI 不再预留工具空间，输出预留按连接的输出上限计算，Token 按字符估算（中文约 1 字 1 个，英文约 4 个字符 1 个），并留出 15% 余量。256K 档下约有 25.6 万 Token 的历史空间；单条很长的消息最多占四分之一。
+- **每轮输入的开头保持不变，服务商的缓存可以跨轮命中。** 每位参与者在新消息还放得下时沿用上次读过的摘要；和上一轮相同的那部分输入单独作为一块并标记缓存（Claude Code 和 Anthropic 连接），新消息和问题放在第二块。订阅版 CLI 在每个聊天、每位参与者固定的空文件夹里运行（文件夹会写进 CLI 自己的系统提示）。OpenAI 连接按聊天和参与者发送哈希后的 `prompt_cache_key`。实测第二、三轮有 93–96% 的输入来自缓存（Claude Code 和 Anthropic API）；Codex 的缓存路由由它自己决定，命中率不稳定。
+- **模型仍然报“输入过长”时**，自动用较少的历史（预算的 60%）重试一次。
+- **复制本轮带角色**：每条消息前写“用户：”或参与者名称，可以直接粘贴。
+- **多选复制和导出**（⋯ → 选择多条…）：点选消息，点提问会连同它的回答一起选中；可以一起复制，或导出为 Markdown 文件，文件开头写对话名称、导出时间和参与者。
+- CLI 看到的文献检索工具说明改为实际使用的来源（OpenAlex、Europe PMC、Crossref、arXiv，含摘要），之前误写为“只查 Crossref 元数据”。
+
 ## 0.2.1 — Prompt caching for Anthropic
 
 - **Anthropic connections now use prompt caching.** Each request marks the parts that do not change — the system

@@ -613,7 +613,8 @@ def install(runtime, app_module, cfg, config_path):
             caps = effective.get('model_capabilities', {}).get(model, {})
             policy(effective, bool(caps.get('tools', effective.get('tools'))) if api_kind else True)
         except ValueError:
-            need = (cfg.get('max_output_tokens', 8192) if api_kind else 128000) + (4096 if api_kind else 32000) + 208512
+            from context_budget import API_TOOL_RESERVE, CLI_OUTPUT
+            need = (cfg.get('max_output_tokens', 8192) + 4096 + API_TOOL_RESERVE) if api_kind else CLI_OUTPUT + 32000
             raise ValueError(_('「{0}」的上下文窗口太小，放不下工具调用的预留空间（至少约 {1}K）。请填写它的实际窗口，或关闭工具调用。', entry["label"], need // 1000 + 1)) from None
         return model
 

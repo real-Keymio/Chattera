@@ -113,6 +113,7 @@ def delete_room(runtime, app_module, data_dir, room_id):
             tasks.tasks.pop(task_id, None)
             if all(c.isalnum() or c == '-' for c in task_id): _rmtree(tasks.directory / task_id)
         _replace_lines(tasks.log, lambda row: row.get('channel') != channel)
+        if all(c.isalnum() or c in '-_' for c in rid): _rmtree(tasks.directory / '_cwd' / rid)   # the CLIs' empty working folders
         counts['calls'] = len(task_ids)
         # 7. Summaries and automatic memory.
         summaries = app_module.summaries
@@ -120,6 +121,9 @@ def delete_room(runtime, app_module, data_dir, room_id):
             if summaries._summaries.pop(channel, None) is not None: summaries._save()
             summaries._versions = [v for v in summaries._versions if v.get('channel') != channel]
         _replace_lines(summaries._versions_path, lambda row: row.get('channel') != channel)
+        builder = getattr(runtime, 'builder', None)
+        if builder is not None and getattr(builder, 'summary_pins_path', None):
+            for model in list(builder._summary_pins().get(channel, {})): builder.remember_summary(channel, model, None)
         memory = getattr(runtime, 'memory', None)
         if memory:
             with memory.lock:

@@ -87,7 +87,7 @@ def chat_context() -> str:
 
 @mcp.tool()
 def research_search(query: str, limit: int = 3) -> str:
-    """Search scholarly bibliographic metadata through Crossref, not full-text evidence."""
+    """Search scholarly literature (OpenAlex, Europe PMC, Crossref, arXiv) by keywords, title, author or DOI. Returns metadata and abstracts, not full text."""
     if not snapshot.get("research_allowed", False):
         return "Research tools disabled for private context; share reviewed public terms in a public-only discussion."
     if snapshot.get("retrieval"):
@@ -98,7 +98,7 @@ def research_search(query: str, limit: int = 3) -> str:
 
 @mcp.tool()
 def research_read(url: str) -> str:
-    """Read a bounded excerpt from an allowed public academic HTTPS page."""
+    """Read the open-access full text of a paper by DOI or URL, or any public scholarly page."""
     if not snapshot.get("research_allowed", False):
         return "Research tools disabled for private context; share reviewed public terms in a public-only discussion."
     if snapshot.get("retrieval"):

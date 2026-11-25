@@ -23,8 +23,8 @@ def test_four_model_caps_and_sparse_input(env):
     cfg={'model':'m','max_output_tokens':1024,'context':{'model':'m','window_tokens':32768,'backend_reserve':4096,'status':'UNKNOWN'}}
     for mode in ('100k','256k','1m','custom'):
         p=policy(cfg,False,mode,777777)
-        assert p['initial_budget_tokens']==27648 and p['window_status']=='UNKNOWN'
-    for window,expected in [(1000000,631488),(1050000,681488)]:
+        assert p['initial_budget_tokens']==23500 and p['window_status']=='UNKNOWN'
+    for window,expected in [(1000000,795600),(1050000,838100)]:   # (window - 32000 reserve - 32000 output) * 0.85; CLIs keep no tool reserve
         cli={'model':'m','context':{'model':'m','window_tokens':window}}
         assert policy(cli,True,'1m')['initial_budget_tokens']==expected
         assert policy(cli,True,'256k')['initial_budget_tokens']==262144

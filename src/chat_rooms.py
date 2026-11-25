@@ -210,14 +210,23 @@ class ContextBuilder:
             raise ValueError('Message unavailable to this model')
         if current['id'] not in {m['id'] for m in rows}:
             rows.append(copy.deepcopy(current))
-        summary = self.summaries.active(channel)
         active = {m['id'] for m in effective(self.store.get_since(-1, channel=channel))}
-        if summary and (not set(summary['source_ids']).issubset(active) or any(
-            not visible(self.store.get_by_id(i), public_only=True) for i in summary['source_ids'])):
-            summary = None
-        if summary and summary.get('fingerprints'):
-            from rolling_memory import fingerprint
-            if any(fingerprint(self.store.get_by_id(i))!=summary['fingerprints'].get(str(i)) for i in summary['source_ids']):summary=None
+        def usable(entry):
+            if not entry or not set(entry['source_ids']).issubset(active) or any(
+                    not visible(self.store.get_by_id(i), public_only=True) for i in entry['source_ids']):
+                return False
+            if entry.get('fingerprints'):
+                from rolling_memory import fingerprint
+                if any(fingerprint(self.store.get_by_id(i)) != entry['fingerprints'].get(str(i)) for i in entry['source_ids']): return False
+            return True
+        summary = self.summaries.active(channel)
+        if not usable(summary): summary = None
+        # The summary this model read last time in this room, kept while it is still valid and no newer summary was
+        # confirmed by the user; build() switches to the newest one when the history after it no longer fits.
+        latest, pinned = summary, self.pinned_summary(channel, model)
+        if pinned and summary and pinned['version'] < summary['version'] and usable(pinned) and not any(
+                v['status'] == 'confirmed' and v['version'] > pinned['version'] for v in self.summaries.versions(channel)):
+            summary = pinned
         rows = [model_message(m, self.store.get_by_id) for m in rows]
         summary = summary_context(summary, self.store.get_by_id)
         snapshot = dict(history=rows, summary=summary, channel=channel, model=model, history_policy=policy,
@@ -225,9 +234,64 @@ class ContextBuilder:
                     research_allowed=all(visible(m, public_only=True) for m in rows))
         if hasattr(self, 'attachments'): self.attachments.freeze(snapshot)
         if getattr(self, 'retrieval_info', None): snapshot['retrieval'] = self.retrieval_info()
+        if latest and summary and latest['version'] != summary['version']:
+            snapshot['summary_latest'] = summary_context(latest, self.store.get_by_id)
         pins = [p for p in self.rooms.get(channel).get('pins', []) if isinstance(p, dict)]
         if pins: snapshot['pins'] = pins
         return snapshot
+
+    # ---- Which summary each model read last (keeps the start of its input stable between turns) ----
+    def _summary_pins(self):
+        path = getattr(self, 'summary_pins_path', None)
+        if not path: return {}
+        try: return json.loads(Path(path).read_text('utf-8'))
+        except (OSError, ValueError): return {}
+
+    def pin_of(self, channel, model):
+        """{summary: version, base: last message id of the fixed part}, or {}."""
+        value = self._summary_pins().get(channel, {}).get(model)
+        return value if isinstance(value, dict) else {'summary': value} if isinstance(value, int) else {}
+
+    def pinned_summary(self, channel, model):
+        version = self.pin_of(channel, model).get('summary')
+        return next((v for v in self.summaries.versions(channel) if v['version'] == version and v['status'] in ('confirmed', 'automatic')), None)
+
+    def remember_summary(self, channel, model, version, base=None):
+        path = getattr(self, 'summary_pins_path', None)
+        if not path: return
+        pins = self._summary_pins()
+        if version is None and base is None: pins.get(channel, {}).pop(model, None)
+        else: pins.setdefault(channel, {})[model] = dict(summary=version, base=base)
+        temporary = Path(str(path) + '.tmp')
+        temporary.write_text(encode(pins), 'utf-8'); temporary.replace(path)
+
+    def split_point(self, channel, model, payload, prompt, summary, snapshot):
+        """Where the fixed part of the input ends: after the last history message of the part this model was sent
+        unchanged last time. The fixed part is sent as its own block with a cache marker, so the provider reads it from
+        its cache on the next turn; everything after it (new messages, the current question) follows in a second block.
+        It moves forward ("rebase") when the part after it grows past a quarter of it or 20K tokens."""
+        from context_budget import count
+        history = payload.get('history') or []
+        if not history: return None
+        def prefix(base):
+            head = {}
+            for key, value in payload.items():
+                if key == 'history':
+                    head[key] = [m for m in value if m['id'] <= base]
+                    break
+                head[key] = value
+            text = encode(head)
+            return text[:-2] if head['history'] and text.endswith(']}') else None
+        pin = self.pin_of(channel, model)
+        base, rebased = pin.get('base'), False
+        same_summary = pin.get('summary') == (summary or {}).get('version')
+        text = prefix(base) if base is not None and same_summary and any(m['id'] == base for m in history) else None
+        if text is None or not prompt.startswith(text) or count(prompt) - count(text) > max(20000, count(text) * .25):
+            base, rebased = history[-1]['id'], True
+            text = prefix(base)
+        if text is None or not prompt.startswith(text): return None
+        import hashlib
+        return dict(chars=len(text), sha256=hashlib.sha256(text.encode('utf-8')).hexdigest(), base_message_id=base, rebased=rebased)
 
     def build(self, channel, model, current, snapshot=None):
         snapshot = snapshot or self.snapshot(channel, model, current)
@@ -301,7 +365,8 @@ class ContextBuilder:
         from context_budget import count,image_tokens
         context_policy=snapshot.get('context_policy')
         image_allowance=image_tokens(snapshot,payload)
-        size = lambda: count(encode(payload)) + (image_allowance if context_policy else 0)
+        measure = count if context_policy else (lambda text: len(text.encode('utf-8')))   # tokens, or UTF-8 bytes for the legacy budget
+        size = lambda: measure(encode(payload)) + (image_allowance if context_policy else 0)
         limit=context_policy['initial_budget_tokens'] if context_policy else self.budget
         if size() > limit:
             raise ValueError("Current message, reference and confirmed summary exceed input budget")
@@ -323,24 +388,47 @@ class ContextBuilder:
                 if size() <= limit * .8: break
             else:
                 raise ValueError("Retrieved evidence does not fit this model's input budget")
-        cutoff = summary.get("coverage_end", -1) if summary else -1
         from chat_visibility import visible
-        covered_by_summary = lambda m: m["id"] <= cutoff and visible(m, public_only=True)
-        for msg in reversed(snapshot["history"]):
-            if msg["id"] in included or covered_by_summary(msg) or msg["id"] >= current["id"]:
-                continue
-            projected=self.project(msg)
-            self.attach_sources(projected, msg)
-            if context_policy and context_policy.get('context_mode') not in ('maximum','1m') and len(projected['text'].encode('utf-8'))>max(4000,min(32000,int(limit*.25))):
-                raw=projected['text'];excerpt=raw.encode('utf-8')[:max(4000,min(32000,int(limit*.25)))].decode('utf-8',errors='ignore')
-                projected['text']=excerpt
-                projected['excerpt']=dict(start=0,end=len(excerpt),total_characters=len(raw),version=(msg.get('metadata') or {}).get('version',1),full_text='chat_read by message ID')
-            payload["history"].insert(0, projected)
-            if size() > limit:
-                payload["history"].pop(0)
-                break
-            included.append(msg["id"])
+        from context_budget import clip
+        # One very long message may take at most a quarter of the room; the rest stays readable with chat_read.
+        long_message = int(limit * .25)
+        def fill(summary):
+            """History newest first until the room is full. Returns the ids that fit and whether any were left out."""
+            payload["summary"] = summary
+            payload["history"] = []
+            cutoff = summary.get("coverage_end", -1) if summary else -1
+            covered = lambda m: m["id"] <= cutoff and visible(m, public_only=True)
+            used, fitted, left_out = size(), [], False
+            for msg in reversed(snapshot["history"]):
+                if msg["id"] in included or covered(msg) or msg["id"] >= current["id"]:
+                    continue
+                projected = self.project(msg)
+                self.attach_sources(projected, msg)
+                if context_policy and context_policy.get('context_mode') not in ('maximum', '1m') and count(projected['text']) > long_message:
+                    raw = projected['text']; excerpt = clip(raw, long_message)
+                    projected['text'] = excerpt
+                    projected['excerpt'] = dict(start=0, end=len(excerpt), total_characters=len(raw), version=(msg.get('metadata') or {}).get('version', 1), full_text='chat_read by message ID')
+                cost = measure(encode(projected)) + 1
+                if used + cost > limit:
+                    left_out = True
+                    break
+                payload["history"].insert(0, projected)
+                fitted.append(msg["id"]); used += cost
+            return fitted, left_out, covered
+        # The summary this model read last time stays at the start of its input while the newer messages still fit,
+        # so the start of the input does not change from turn to turn and the provider's prompt cache keeps working.
+        # A newer summary is taken when the history no longer fits, or when the pinned one is gone.
+        fitted, left_out, covered_by_summary = fill(summary)
+        newer = snapshot.get("summary_latest")
+        if newer and (left_out or size() > limit * .7):
+            summary = snapshot["summary"] = newer
+            fitted, left_out, covered_by_summary = fill(summary)
+        snapshot.pop("summary_latest", None)
+        included.extend(fitted)
         prompt = encode(payload)
+        split = self.split_point(channel, model, payload, prompt, summary, snapshot) if context_policy else None
+        if split: snapshot['prompt_split'] = split
+        else: snapshot.pop('prompt_split', None)
         history = snapshot["history"]
         omitted = [m["id"] for m in history if not covered_by_summary(m) and m["id"] < current["id"] and m["id"] not in included]
         covered = [m["id"] for m in history if covered_by_summary(m) and m["id"] not in included]

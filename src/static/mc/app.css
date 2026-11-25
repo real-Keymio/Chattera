@@ -988,3 +988,14 @@ body.cv-carrying, body.cv-carrying * { cursor: grabbing !important; user-select:
 .file-chip { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); text-decoration: none; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-chip:hover { border-color: var(--accent); color: var(--ink); }
 .pending .steps { font-size: .8em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* Selecting messages to copy or export together */
+.pick-bar { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 8px;
+    width: min(720px, calc(100vw - 32px)); padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface);
+    box-shadow: var(--shadow-2); flex-wrap: wrap; }
+.pick-bar .grow { flex: 1; }
+.pick-count { font-size: .9em; color: var(--ink-2); }
+.picking .pane .msg[data-id] { cursor: pointer; }
+.picking .pane .msg[data-id]::before { content: ''; position: absolute; left: -26px; top: 6px; width: 15px; height: 15px; border: 1.5px solid var(--line-2); border-radius: 4px; background: var(--surface); }
+.picking .pane .msg.picked::before { background: var(--accent); border-color: var(--accent); }
+.picking .pane .msg.picked { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 4px; border-radius: 10px; }

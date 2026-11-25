@@ -107,7 +107,10 @@ class APIBackend:
         from chat_attachments import image_blocks
         images=image_blocks(snapshot, json.loads(prompt))
         if images and not cfg.get('images'): raise ValueError('Selected API backend does not support image input')
-        messages=wire.initial(cfg,prompt,images)
+        from context_budget import prompt_parts
+        parts=prompt_parts(prompt,snapshot) if wire.cache_marker(cfg) else None
+        if parts:cfg=dict(cfg,_split=True)
+        messages=wire.initial(cfg,prompt,images,parts)
         totals={'prompt_tokens':0,'completion_tokens':0}; usage_known=True; tool_calls=[]; response_usages=[]
         # How this reply may search was decided when it started (chat_search.plan) and is frozen in the snapshot.
         search=snapshot.get('search') or {}
@@ -165,6 +168,8 @@ class APIBackend:
                     late=bool(deadline) and time.monotonic()-started>deadline*.85   # leave time to write the answer
                     final=finishing or late or (attempt==rounds-1 and bool(tool_calls))
                     body=wire.body(cfg,messages,[] if native[0] else (tool_schemas(snapshot) if cfg.get('tools') else []),native[0],final=final)
+                    key=wire.cache_key(cfg,task)
+                    if key:body['prompt_cache_key']=key
                     async with client.stream('POST',wire.endpoint(cfg),headers=headers,json=body) as response:
                         if response.status_code != 200:
                             error=bytearray()

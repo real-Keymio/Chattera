@@ -109,7 +109,30 @@ class CLIBackend:
         mcp = {"command": script[0], "args": [*script[1:], str(directory / "snapshot.json")]}
         return self.adapter.command(self.config, directory, mcp, baseline, search)
 
+    @staticmethod
+    def working_folder(directory, task):
+        """An empty folder that stays the same for one participant in one chat. CLIs write their working folder into
+        the start of their own system prompt; a new folder for every reply would change that start and stop the
+        provider's prompt cache from matching from one turn to the next. The reply's files stay in its task folder."""
+        import re
+        room, who = task.get('room_id'), task.get('identity') or task.get('model')
+        if not room or not who: return directory
+        place = directory.parent / '_cwd' / re.sub(r'[^A-Za-z0-9_.-]', '_', str(room))[:80] / re.sub(r'[^A-Za-z0-9_.-]', '_', str(who))[:80]
+        try: place.mkdir(parents=True, exist_ok=True)
+        except OSError: return directory
+        return place
+
     def run(self, prompt, task, attach, cancel):
+        try:
+            return self._run(prompt, task, attach, cancel, split=True)
+        except RuntimeError as exc:
+            # The CLI refused the cache marker on the fixed part of the input: once more, as one block.
+            import api_protocols as wire
+            if not task.get('_split_used') or not wire.cache_rejected(str(exc)): raise
+            task['split_refused'] = str(exc)[:200]
+            return self._run(prompt, task, attach, cancel, split=False)
+
+    def _run(self, prompt, task, attach, cancel, split=True):
         if "executable" in self.config and not Path(self.config["executable"]).is_file():
             raise ValueError(f"{self.name} CLI path no longer exists; reinstall it or update its search path in the model settings")
         directory = Path(task["directory"])
@@ -123,9 +146,12 @@ class CLIBackend:
         trace = CliTrace(self.name, getattr(attach, 'search', None))
         command = self.command(directory, task.get("baseline", False), **({'search': True} if native else {}))
         payload = json.loads(prompt)
+        if not split: frozen.pop('prompt_split', None)
         command, stdin_data = self.adapter.prepare_input(self.config, command, prompt, payload, frozen)
+        task['_split_used'] = bool(frozen.get('prompt_split')) and stdin_data != prompt.encode('utf-8')
+        place = self.working_folder(directory, task)
         def spawn():
-            proc = subprocess.Popen(command, cwd=directory, env=clean_environment(self.config.get('secret_env_names', [])),
+            proc = subprocess.Popen(command, cwd=place, env=clean_environment(self.config.get('secret_env_names', [])),
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     creationflags=(subprocess.CREATE_NO_WINDOW | 0x4) if os.name == "nt" else 0)
             tree = ProcessTree(proc)

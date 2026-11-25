@@ -19,7 +19,10 @@ def error_hint(raw):
            'max_tokens','max_completion_tokens','max_output_tokens','maxOutputTokens','anthropic-workspace-id',
            'reasoning.effort','reasoning.encrypted_content','/v1/responses')
     found=[name for name in names if re.search(r'(?<![\w.-])'+re.escape(name)+r'(?![\w-])',message,re.IGNORECASE)]
-    return '; provider-referenced parameters: '+', '.join(found) if found else ''
+    from context_budget import overflowed
+    # A fixed phrase only (the provider's own text stays out), so the task can retry with less history.
+    too_long='; the provider said the input is too long' if overflowed(message) else ''
+    return ('; provider-referenced parameters: '+', '.join(found) if found else '')+too_long
 
 def protocol(cfg):
     value=cfg.get('protocol','openai-chat' if cfg.get('type')=='openai-compatible' else None)
@@ -45,8 +48,12 @@ def endpoint(cfg):
     model=cfg['model'].removeprefix('models/')
     return base+'/models/'+quote(model,safe='')+':generateContent'
 
-def initial(cfg,prompt,images):
+def initial(cfg,prompt,images,parts=None):
+    """parts: (fixed part, rest) of the input, sent as two text blocks to Anthropic so the fixed part can be cached
+    on its own (see with_cache_points). Other protocols cache by prefix and get the input as one text."""
     p=protocol(cfg)
+    if parts and p=='anthropic-messages':
+        return [{'role':'user','content':[{'type':'text','text':parts[0]},{'type':'text','text':parts[1]}]+initial(cfg,'x',images)[0]['content'][1:]}]
     if p=='openai-chat':return [{'role':'system','content':SYSTEM},{'role':'user','content':[{'type':'text','text':prompt},*images]}]
     if p=='openai-responses':return [{'role':'user','content':[{'type':'input_text','text':prompt},*[{'type':'input_image','image_url':i['image_url']['url']} for i in images]]}]
     parts=[]
@@ -87,17 +94,34 @@ def cache_marker(cfg):
 def _markable(block):
     return isinstance(block,dict) and block.get('type') not in ('thinking','redacted_thinking') and not (block.get('type')=='text' and not block.get('text'))
 
-def with_cache_points(messages,marker):
+def with_cache_points(messages,marker,split=False):
+    """split: the first message starts with the fixed part of the input as its own block; that block is marked
+    (it stays the same from turn to turn), together with the last block of the request."""
     out=list(messages)
     for index in dict.fromkeys(i for i in (0,len(out)-1) if 0<=i<len(out)):
         message=out[index];content=message.get('content')
         if isinstance(content,str):content=[{'type':'text','text':content}] if content else []
         if not isinstance(content,list):continue
-        spot=next((i for i in range(len(content)-1,-1,-1) if _markable(content[i])),None)
-        if spot is None:continue
-        content=list(content);content[spot]=dict(content[spot],cache_control=marker)
+        spots=[i for i in range(len(content)-1,-1,-1) if _markable(content[i])][:1]
+        if split and index==0 and content and _markable(content[0]):
+            spots=[0]+([spots[0]] if index==len(out)-1 and spots and spots[0]!=0 else [])
+        if not spots:continue
+        content=list(content)
+        for spot in spots:content[spot]=dict(content[spot],cache_control=marker)
         out[index]=dict(message,content=content)
     return out
+
+def cache_key(cfg,task):
+    """OpenAI routes requests with the same prompt_cache_key to the same cache. One key per participant and chat, so its
+    turns, whose input starts the same way, find each other. A hash only: no room name, text or account detail.
+    Sent only to OpenAI itself; relays may refuse fields they do not know."""
+    import hashlib
+    from urllib.parse import urlparse
+    room,who=task.get('room_id'),task.get('identity') or task.get('model')
+    if not room or not who or protocol(cfg) not in ('openai-responses','openai-chat'):return None
+    if (urlparse(cfg.get('base_url') or '').hostname or '').lower()!='api.openai.com':return None
+    return 'chattera-'+hashlib.sha256((str(room)+'|'+str(who)).encode()).hexdigest()[:32]
+
 
 def cache_rejected(raw):
     """A 400 caused by the cache fields themselves (relays that speak the Messages protocol without caching)."""
@@ -126,7 +150,7 @@ def _body(cfg,messages,schemas,native=None):
     if p=='anthropic-messages':
         result={'model':cfg['model'],'system':SYSTEM,'messages':messages,'max_tokens':cfg['max_output_tokens']}
         cache=cache_marker(cfg)
-        if cache:result.update(system=[{'type':'text','text':SYSTEM,'cache_control':cache}],messages=with_cache_points(messages,cache))
+        if cache:result.update(system=[{'type':'text','text':SYSTEM,'cache_control':cache}],messages=with_cache_points(messages,cache,bool(cfg.get('_split'))))
         if thinking:result['thinking']=thinking
         if effort is not None:result['output_config']={'effort':effort}
         if schemas:result['tools']=[{'name':s['function']['name'],'description':s['function']['description'],'input_schema':s['function']['parameters']} for s in schemas]

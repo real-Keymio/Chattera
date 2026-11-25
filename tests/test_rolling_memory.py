@@ -52,7 +52,7 @@ def test_manual_fence_cancel_restart(env):
 
 def test_strategies_and_long_excerpt(env):
     cfg={'model':'m','max_output_tokens':1024,'context':{'model':'m','window_tokens':32768,'backend_reserve':4096}}
-    assert [policy(cfg,False,x)['initial_budget_tokens'] for x in ('standard','long','maximum')]==[20000,27648,27648]
+    assert [policy(cfg,False,x)['initial_budget_tokens'] for x in ('standard','long','maximum')]==[20000,23500,23500]
     r,s,_,_=env
     huge=add(s,'x'*40000);q=add(s,'current')
     snapshot=r.builder.snapshot('general','claude',q);snapshot['context_policy']=policy(cfg,mode='standard')

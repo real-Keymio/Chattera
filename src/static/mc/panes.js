@@ -94,6 +94,15 @@ class Pane {
         this.scroller.addEventListener('scroll', () => { this.onScroll(); captureSoon(); }, { passive: true });
         for (const name of ['pointerdown', 'wheel', 'focusin']) this.el.addEventListener(name, () => { activePane = this.index; this.touched = true; }, { passive: true });
         this.el.addEventListener('click', event => {
+            if (picking()) {
+                const el = event.target.closest('.msg[data-id]');
+                if (el && !event.target.closest('a, .acts, .fold, .code-copy')) {
+                    event.preventDefault(); event.stopPropagation();
+                    const msg = S.msgs.get(Number(el.dataset.id));
+                    if (msg) { togglePick(msg); drawPicks(); }
+                    return;
+                }
+            }
             const copy = event.target.closest('.code-copy');
             if (copy) copyText(copy.closest('.code-block')?.querySelector('pre')?.textContent || '');
         });
@@ -259,7 +268,7 @@ class Pane {
                 onclick: () => { a.classList.remove('folded', 'stub'); a.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }, sigil(a.dataset.author, 'xs'), label(a.dataset.author)))),
             !this.find(question) && S.msgs.get(question) ? h('button', { class: 'link', onclick: () => this.scrollTo(question) }, t('查看对应提问')) : null,
             h('span', { class: 'grow' }),
-            h('button', { class: 'turn-compare', title: t('复制这一轮的问题和所有已完成的回答（Markdown，来自原始消息，不受折叠影响）'), onclick: () => copyTurn(question) }, icon(ICONS.copy, 14), t('复制本轮')),
+            h('button', { class: 'turn-compare', title: t('复制这一轮的提问和所有已完成的回答，每条前面写着是谁说的（来自原始消息，不受折叠影响）'), onclick: () => copyTurn(question) }, icon(ICONS.copy, 14), t('复制本轮')),
             h('button', { class: 'turn-compare', title: t('把这一整轮放到画布上（在画布模式下也可以按住这一行拖过去）'), onclick: () => { setMode('canvas'); setTimeout(() => emit('canvas-add', { kind: 'turn', ref: question }), 420); } }, icon(ICONS.canvas, 14), t('放到画布')),
             h('button', { class: 'turn-compare', title: t('打开并排视口，每栏定位到一个模型对这个问题的回答'), onclick: () => compareTurn(question) }, icon(ICONS.columns, 14), t('并排对照')),
             h('button', { class: 'turn-fold', onclick: () => { answers.forEach(a => setFold(a, !allFolded)); this.turnHead(turn); } }, allFolded ? t('全部展开') : t('全部折叠'))].filter(Boolean));
@@ -469,26 +478,82 @@ export function setMode(mode) {
     transition(() => build());
 }
 export const paneMode = () => layoutOf(S.active).mode || 'tile';
-/** One round as Markdown, from the stored messages: the question and every completed answer with who wrote it and on which model. */
-export function turnMarkdown(question) {
-    const asked = S.msgs.get(question), lines = [t('## 提问 #{0}', question), '', asked?.text || '', ''];
-    for (const answer of answersTo(question)) {
-        const task = S.tasks.get(answer.metadata?.task_id || answer.metadata?.source_task_id), who = authorOf(answer);
-        const model = task?.actual_model && task.actual_model !== 'UNKNOWN' ? task.actual_model : task?.requested_model;
-        const notes = [t('回应提问 #{0}', question)];
-        if (answer.reply_to != null && answer.reply_to !== question) notes.push(t('引用 #{0}', answer.reply_to));
-        if (task?.search && task.search.path !== 'none') notes.push(t('联网：{0}，搜索 {1} 次、读取 {2} 页', task.search.label || task.search.path, task.search_summary?.searches || 0, task.search_summary?.pages || 0));
-        if (task?.evidence_id) notes.push(t('使用了共享检索资料'));
-        if (audienceOf(answer) !== 'public') notes.push(audienceText(audienceOf(answer)));
-        lines.push(t('## {0}{1} · 回答 #{2}', label(who), model && model !== 'UNKNOWN' ? t('（{0}）', model) : '', answer.id), '', answer.text || '', '', `> ${notes.join(t('；'))}`, '');
-    }
-    return lines.join('\n').trim() + '\n';
+// ----- copying with who said what, and exporting a part of the chat -----
+/** "用户" for the person, the participant's name for a model. */
+const speaker = msg => ALL.includes(authorOf(msg)) ? label(authorOf(msg)) : t('用户');
+function messageText(msg) {
+    const files = (msg.attachments || []).map(a => a.name || t('附件'));
+    return (msg.text || '') + (files.length ? (msg.text ? '\n' : '') + t('（附件：{0}）', files.join(t('、'))) : '');
+}
+/** Plain text for pasting anywhere: each message under its speaker, in the order they were written. */
+export function transcript(messages) {
+    return messages.map(m => `${speaker(m)}${t('：')}\n${messageText(m).trim()}`).join('\n\n') + '\n';
+}
+const turnOf = question => [S.msgs.get(question), ...answersTo(question)].filter(Boolean);
+export function turnMarkdown(question) { return transcript(turnOf(question)); }
+async function clip(text, done) {
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) { const area = h('textarea', { value: text, style: { position: 'fixed', opacity: 0 } }); document.body.append(area); area.select(); document.execCommand('copy'); area.remove(); }
+    toast(done);
 }
 export async function copyTurn(question) {
-    const text = turnMarkdown(question);
-    try { await navigator.clipboard.writeText(text); toast(t('已复制本轮：1 个提问、{0} 个回答', answersTo(question).length)); }
-    catch (e) { const area = h('textarea', { value: text, style: { position: 'fixed', opacity: 0 } }); document.body.append(area); area.select(); document.execCommand('copy'); area.remove(); toast(t('已复制本轮')); }
+    await clip(turnMarkdown(question), t('已复制本轮：1 个提问、{0} 个回答', answersTo(question).length));
 }
+const two = n => String(n).padStart(2, '0');
+const stampOf = (date, sep = '-') => `${date.getFullYear()}${sep}${two(date.getMonth() + 1)}${sep}${two(date.getDate())}`;
+/** A Markdown file of the chosen messages, with the chat's name, the time of export and who took part. */
+export function exportMarkdown(messages) {
+    const room = activeRoom(), now = new Date(), names = [...new Set(messages.map(speaker))];
+    const head = [`# ${room?.name || t('聊天记录')}`, '',
+        `- ${t('导出时间：{0} {1}:{2}', stampOf(now), two(now.getHours()), two(now.getMinutes()))}`,
+        `- ${t('参与者：{0}', names.join(t('、')))}`,
+        `- ${t('共 {0} 条消息（#{1}–#{2}）', messages.length, messages[0]?.id, messages.at(-1)?.id)}`, '', '---', ''];
+    const body = messages.map(m => `**${speaker(m)}${t('：')}**\n\n${messageText(m).trim()}\n`);
+    const text = head.join('\n') + '\n' + body.join('\n---\n\n');
+    const name = `${(room?.name || 'chat').replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 60)}-${stampOf(now, '')}-${two(now.getHours())}${two(now.getMinutes())}.md`;
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+    h('a', { href: url, download: name }).click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast(t('已导出 {0}', name));
+}
+
+// Selecting messages: click messages (a question takes its answers with it), then copy or export them together.
+const picked = new Set();
+let pickBar = null;
+const pickedMessages = () => displayMessages(S.active).filter(m => picked.has(m.id)).sort((a, b) => a.id - b.id);
+export const picking = () => Boolean(pickBar);
+export function startPicking(first) {
+    if (!pickBar) {
+        pickBar = h('div', { class: 'pick-bar', role: 'toolbar' });
+        document.body.append(pickBar);
+        host().classList.add('picking');
+    }
+    if (first) togglePick(first, true);
+    drawPicks();
+}
+export function stopPicking() {
+    picked.clear(); pickBar?.remove(); pickBar = null;
+    host().classList.remove('picking'); drawPicks();
+}
+function togglePick(msg, on) {
+    const group = isAnswer(msg) || !answersTo(msg.id).length ? [msg] : turnOf(msg.id);
+    const add = on ?? !picked.has(msg.id);
+    for (const m of group) add ? picked.add(m.id) : picked.delete(m.id);
+}
+function drawPicks() {
+    for (const el of document.querySelectorAll('.pane .msg[data-id]')) el.classList.toggle('picked', picked.has(Number(el.dataset.id)));
+    if (!pickBar) return;
+    const chosen = pickedMessages(), empty = !chosen.length;
+    pickBar.replaceChildren(
+        h('span', { class: 'pick-count' }, empty ? t('点选消息：点提问会连同它的回答一起选中') : t('已选 {0} 条', chosen.length)),
+        h('button', { class: 'btn small', onclick: () => { displayMessages(S.active).filter(isChat).forEach(m => picked.add(m.id)); drawPicks(); } }, t('全选')),
+        h('button', { class: 'btn small', disabled: empty, onclick: () => { picked.clear(); drawPicks(); } }, t('清空')),
+        h('span', { class: 'grow' }),
+        h('button', { class: 'btn small', disabled: empty, onclick: () => clip(transcript(pickedMessages()), t('已复制 {0} 条消息', pickedMessages().length)) }, icon(ICONS.copy, 14), t('复制')),
+        h('button', { class: 'btn small primary', disabled: empty, onclick: () => exportMarkdown(pickedMessages()) }, icon(ICONS.doc, 14), t('导出 Markdown')),
+        h('button', { class: 'btn small', onclick: stopPicking }, t('完成')));
+}
+on('room', () => { if (pickBar) stopPicking(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && pickBar && !document.querySelector('dialog[open]')) stopPicking(); });
 /** Maximise one pane over the others, or go back. Every pane keeps its own reading position, including the one that grows. */
 function toggleZoom(index, land) {
     const box = host(), pane = panes[index], back = box.dataset.zoom === String(index);
@@ -587,6 +652,7 @@ function renderMessage(msg, pane) {
     const author = authorOf(msg), ai = ALL.includes(author), scope = audienceOf(msg);
     const el = h('article', { class: 'msg ' + (ai ? 'ai' : 'user') + (shared ? ' shared' : '') + (scope !== 'public' ? ' private' : ''),
         dataset: { id: msg.id, root: rootOf(msg), author: ai ? author : msg.sender }, style: ai ? { '--hue': color(author) } : null });
+    if (picked.has(msg.id)) el.classList.add('picked');
     const stamp = h('time', { class: 'msg-time', title: `#${msg.id} · ${new Date(msg.timestamp * 1000).toLocaleString('zh-CN')}` }, fmtTime(msg.timestamp));
     const acts = actions(msg, { ai, shared, scope, author, el, pane });
     const body = h('div', { class: 'msg-body' }, markdownOf(msg));
@@ -692,6 +758,11 @@ function askResponse(msg, author, responder, el, instruction) {
     });
 }
 
+/** The question a message belongs to, when that round has at least one answer. */
+const turnQuestion = msg => {
+    const question = isAnswer(msg) ? msg.reply_to : msg.id;
+    return question != null && S.msgs.get(question) && answersTo(question).length ? question : null;
+};
 function actions(msg, { ai, shared, scope, author, el, pane }) {
     const meta = msg.metadata || {}, room = activeRoom();
     const button = (name, title, fn) => h('button', { class: 'act', title, 'aria-label': title, onclick: event => { event.stopPropagation(); fn(event); } }, icon(ICONS[name], 15));
@@ -712,6 +783,8 @@ function actions(msg, { ai, shared, scope, author, el, pane }) {
         menu(Object.assign(event.currentTarget, { alignRight: true }), [
             ...(ai && presets.length ? [{ title: t('请模型回应（预填到输入框，不会自动发送）') },
                 ...presets.map(p => ({ label: t(p.label), hint: p.hint ? t(p.hint) : '', action: () => usePreset(msg, author, p, el) })), 'sep'] : []),
+            turnQuestion(msg) != null ? { label: t('复制本轮'), icon: 'copy', hint: t('提问和所有回答，每条前面写着是谁说的'), action: () => copyTurn(turnQuestion(msg)) } : null,
+            { label: t('选择多条…'), icon: 'check', hint: t('选中几条或几轮消息，一起复制或导出为 Markdown 文件'), action: () => startPicking(msg) },
             ai && msg.reply_to != null && answersTo(msg.reply_to).length > 1 ? { label: t('并排对照这个问题的回答'), icon: 'columns', action: () => compareTurn(msg.reply_to) } : null,
             task ? { label: t('这次回答的依据'), icon: 'doc', action: () => openMaterials(task, author) } : null,
             scope === 'public' ? { label: t('固定到房间背景'), icon: 'pin', hint: t('之后每次提问都会带上这段内容；选中一段文字可以只固定那一段'), action: () => pinMessage(msg, el) } : null,

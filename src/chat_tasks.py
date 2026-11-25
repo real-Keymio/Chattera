@@ -247,6 +247,9 @@ class TaskManager:
             visibility = options.pop('reply_visibility', None) or inherited(snapshot['history'])
             if options.get('independent_mode'):
                 visibility = [model]
+            if not prepared and getattr(self.builder, 'remember_summary', None):
+                try: self.builder.remember_summary(channel, model, (snapshot.get('summary') or {}).get('version'), (snapshot.get('prompt_split') or {}).get('base_message_id'))
+                except OSError: pass
             task_id = str(uuid.uuid4())
             directory = self.directory / task_id
             directory.mkdir()
@@ -326,7 +329,14 @@ class TaskManager:
             if isinstance(runner,CLIBackend):
                 runner=copy.copy(runner)
                 runner.config=dict(runner.config,**task['_effective_config'])
-            result = redact(runner.run(prompt, task, attach, task["cancel"]))
+            try:
+                result = redact(runner.run(prompt, task, attach, task["cancel"]))
+            except Exception as exc:
+                # The model refused the input as too long: once, with less history (60% of the room).
+                smaller = self.smaller_input(task, exc)
+                if smaller is None: raise
+                prompt = smaller
+                result = redact(runner.run(prompt, task, attach, task["cancel"]))
             with self.lock:
                 # The final append and cancellation/switch are serialized.
                 if task["state"] != "running" or self.builder.rooms.owner(task["channel"], task["model"]) != task["backend"]:
@@ -379,6 +389,30 @@ class TaskManager:
                 key = (task["channel"], task.get("identity", task["model"]))
                 if self.active.get(key) == task["task_id"]:
                     self.active.pop(key, None)
+
+    def smaller_input(self, task, exc):
+        from context_budget import overflowed
+        if task.get('context_retry') or task['state'] != 'running' or not overflowed(str(exc)): return None
+        directory = Path(task['directory'])
+        try:
+            snapshot = json.loads((directory / 'snapshot.json').read_text('utf-8'))
+            current = self.builder.store.get_by_id(task['current_id'])
+            policy = snapshot.get('context_policy')
+            if not policy or not current: return None
+            snapshot['context_policy'] = dict(policy, initial_budget_tokens=int(policy['initial_budget_tokens'] * .6), reduced_after='input too long')
+            prompt, audit = self.builder.build(task['channel'], task['identity'], current, snapshot)
+        except (OSError, ValueError):
+            return None
+        prompt = redact(prompt)
+        (directory / 'input.json').write_text(prompt, 'utf-8')
+        (directory / 'snapshot.json').write_text(encode(redact(snapshot)), 'utf-8')
+        with self.lock:
+            task.update({k: audit[k] for k in ('history_included_ids', 'trimmed_history_ranges', 'summarized_history_ranges', 'included_message_ranges',
+                                              'message_ids', 'input_bytes', 'input_estimate') if k in audit},
+                        context_retry=dict(first_error=str(exc)[:300], budget=snapshot['context_policy']['initial_budget_tokens']),
+                        input_sha256=hashlib.sha256(prompt.encode('utf-8')).hexdigest())
+            self.record(task)
+        return prompt
 
     def cancel(self, channel=None, model=None):
         with self.lock:
